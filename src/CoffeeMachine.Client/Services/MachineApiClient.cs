@@ -29,8 +29,9 @@ public sealed class ApiException : Exception
 /// <summary>
 /// Typed client for the Coffee Machine REST API. All endpoints live under
 /// <c>/api/v1</c> on the same origin as the app, and every request is tagged
-/// with the per-visitor machine id (a GUID persisted in localStorage so a
-/// refresh keeps the same machine, balance and ledger).
+/// with the per-visitor machine id (a GUID persisted in sessionStorage so a
+/// refresh keeps the same machine and balance, while a second tab gets its
+/// own independent machine).
 /// </summary>
 public sealed class MachineApiClient
 {
@@ -174,13 +175,13 @@ public sealed class MachineApiClient
         }
         catch (JSException)
         {
-            // localStorage unavailable (private mode?) — fall through and use an in-memory id.
+            // Storage unavailable (private mode?) — fall through and use an in-memory id.
         }
 
         var fresh = Guid.NewGuid();
         try
         {
-            await _js.InvokeVoidAsync("localStorage.setItem", MachineIdStorageKey, fresh.ToString()).ConfigureAwait(false);
+            await _js.InvokeVoidAsync("sessionStorage.setItem", MachineIdStorageKey, fresh.ToString()).ConfigureAwait(false);
         }
         catch (JSException)
         {

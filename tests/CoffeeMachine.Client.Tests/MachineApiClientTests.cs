@@ -90,4 +90,39 @@ public sealed class MachineApiClientTests
         Assert.Equal(2, ex.Refund[0].Count);
         Assert.Equal(50, ex.Refund[1].DenominationCents);
     }
+
+    // --------------------------------------------------------- machine id store
+
+    [Fact]
+    public async Task Machine_Id_Is_Generated_Once_And_Stored_In_SessionStorage()
+    {
+        var (client, js, _) = Create(_ => Problem(404, "{}"));
+
+        var first = await client.MachineIdAsync;
+        var second = await client.MachineIdAsync;
+
+        Assert.Equal(first, second);
+        Assert.Contains(js.Calls, call => call.Identifier == "sessionStorage.getItem");
+
+        var set = Assert.Single(js.Calls.Where(call => call.Identifier == "sessionStorage.setItem"));
+        Assert.Equal("cm-machine-id", set.Args![0]);
+        Assert.Equal(first.ToString(), set.Args[1]);
+
+        // SessionStorage (not localStorage) keeps tabs independent while
+        // still surviving a refresh within the same tab.
+        Assert.DoesNotContain(js.Calls, call => call.Identifier == "localStorage.getItem");
+    }
+
+    [Fact]
+    public async Task Machine_Id_Is_Reused_From_SessionStorage_On_Refresh()
+    {
+        var (client, js, _) = Create(_ => Problem(404, "{}"));
+        var existing = Guid.NewGuid().ToString();
+        js.Results["sessionStorage.getItem"] = existing;
+
+        var id = await client.MachineIdAsync;
+
+        Assert.Equal(existing, id.ToString());
+        Assert.DoesNotContain(js.Calls, call => call.Identifier == "sessionStorage.setItem");
+    }
 }
