@@ -5,7 +5,7 @@ insert Australian coins, watch the 1¢ and 2¢ get spat into the coin return, br
 one of three coffees, and take your change, broken into coinage.
 
 [![CI](https://github.com/XanderCaulfield/virtual-coffee-machine/actions/workflows/ci.yml/badge.svg)](https://github.com/XanderCaulfield/virtual-coffee-machine/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-986-green)](#testing)
+[![Tests](https://img.shields.io/badge/tests-988-green)](#testing)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Live demo](https://img.shields.io/badge/live_demo-onrender.com-46e3b7)](https://virtual-coffee-machine.onrender.com)
 
@@ -196,18 +196,16 @@ curl -s "http://localhost:5198/api/v1/transactions?machineId=desk-1&limit=5"
 
 ## Testing
 
-**986 tests, all green** — 956 domain + 24 API integration in the solution,
-plus 6 client unit tests in a standalone project:
+**988 tests, all green** — 956 domain + 26 API integration + 6 client, all in the solution:
 
 ```bash
-dotnet test                                          # the 980 solution tests
-dotnet test tests/CoffeeMachine.Client.Tests         # +6 client unit tests
+dotnet test        # all 988 tests (domain + API integration + client)
 ```
 
 | Layer | What's covered |
 |---|---|
 | **Domain** (956) | The complete coin-validator matrix (including rejected 1¢/2¢); an **exhaustive change proof** — every amount from 0–4000¢ in 5¢ steps is broken down, checked to sum correctly, never emit 1¢/2¢, and match a dynamic-programming optimum coin-for-coin; the full state machine; inventory & exact-change; cancel/refund; ledger ordering and limits |
-| **API** (24) | Integration tests via `WebApplicationFactory` + in-memory SQLite: every endpoint, every success shape, and every error path — 400s, all four 409 `errorCode` values, 404 for unknown routes, persistence across requests |
+| **API** (26) | Integration tests via `WebApplicationFactory` + in-memory SQLite: every endpoint, every success shape, and every error path — 400s, all four 409 `errorCode` values, 404 for unknown routes, persistence across requests |
 | **Client** (6) | The `MachineApiClient` against a stub `HttpHandler` |
 | **Browser pass** | Manual/CDP checks: mobile width, two tabs staying independent, refresh mid-brew restoring state, `prefers-reduced-motion`, keyboard shortcuts, a11y audit |
 
