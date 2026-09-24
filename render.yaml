@@ -33,3 +33,16 @@ services:
       # no appsettings.Development fallbacks on the hosted instance.
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
+      # Silence EF Core's per-request SQL chatter in the logs. This is a demo
+      # machine with frequent small writes (coin inserts, ledger rows); at
+      # Information level EF Core logs every parameterized statement, which
+      # drowns out anything interesting in the Render log stream.
+      - key: Logging__LogLevel__Microsoft.EntityFrameworkCore
+        value: Warning
+      # NOTE: no DB_PATH needed here — the Dockerfile bakes in
+      # `ENV DB_PATH=/data/coffeemachine.db` (a writable dir owned by the
+      # non-root `app` user). If you override DB_PATH, pick a path the `app`
+      # user can write. On the free plan the filesystem is ephemeral: the
+      # SQLite database (visitor machines + ledger) resets on every redeploy
+      # and after each sleep/wake cycle. Acceptable for a demo — each visitor
+      # gets a fresh machine anyway.

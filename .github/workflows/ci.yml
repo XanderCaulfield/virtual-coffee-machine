@@ -50,18 +50,28 @@ jobs:
           name: coffee-machine-api
           path: publish/
 
-      # ============================================================================
-      # RENDER DEPLOY HOOK (OWNER: A5 / DevOps & Hosting)
-      # ----------------------------------------------------------------------------
-      # TODO(A5): Add the Render Blueprint / deploy hook step here. Render typically
-      # auto-deploys `main` from the Dockerfile (see render.yaml), but if an explicit
-      # hook is preferred, deploy the uploaded artifact (or trigger Render) e.g.:
-      #
-      #   - name: Deploy to Render
-      #     env:
-      #       RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-      #     run: |
-      #       curl -X POST "$RENDER_DEPLOY_HOOK_URL"
-      #
-      # A5: replace/complete this block with the final deploy wiring.
-      # ============================================================================
+  # ============================================================================
+  # RENDER DEPLOY (OWNER: A5 / DevOps & Hosting)
+  # ----------------------------------------------------------------------------
+  # Render's autoDeploy (render.yaml) already redeploys on every push to
+  # `main`, so this hook is belt-and-braces: it fires an explicit Render
+  # Deploy Hook URL for good measure. The whole job no-ops when the secret
+  # is absent, so forks and PR workflows keep passing with Render unwired.
+  # To enable: Render dashboard → service → Settings → Deploy Hook → copy the
+  # URL into the repo secret RENDER_DEPLOY_HOOK_URL.
+  # ============================================================================
+  deploy:
+    name: Notify Render (deploy hook)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: publish
+    runs-on: ubuntu-latest
+    env:
+      RENDER_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+    steps:
+      - name: Trigger Render deploy hook
+        if: env.RENDER_HOOK != ''
+        run: curl -fsS -X POST "$RENDER_HOOK"
+
+      - name: Render hook not configured (autoDeploy covers it)
+        if: env.RENDER_HOOK == ''
+        run: echo "RENDER_DEPLOY_HOOK_URL secret not set — relying on Render autoDeploy."
