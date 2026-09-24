@@ -4,21 +4,26 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CoffeeMachine.Client</title>
+    <title>BREWMASTER 2000 — Virtual Coffee Machine</title>
     <base href="/" />
-    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
-    <link rel="stylesheet" href="css/app.css" />
+    <meta name="description" content="A virtual Australian coffee vending machine: insert coins, pick a brew, get your change. Built with Blazor WebAssembly." />
+    <meta name="theme-color" content="#120b06" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="stylesheet" href="css/app.css" />
     <link href="CoffeeMachine.Client.styles.css" rel="stylesheet" />
 </head>
 
 <body>
     <div id="app">
-        <svg class="loading-progress">
-            <circle r="40%" cx="50%" cy="50%" />
-            <circle r="40%" cx="50%" cy="50%" />
-        </svg>
-        <div class="loading-progress-text"></div>
+        <div class="splash">
+            <svg class="loading-progress" viewBox="0 0 100 100" aria-hidden="true">
+                <circle r="40" cx="50" cy="50" />
+                <circle r="40" cx="50" cy="50" />
+            </svg>
+            <p class="splash-brand">BREWMASTER <span>2000</span></p>
+            <p class="splash-status">POWERING UP…</p>
+        </div>
     </div>
 
     <div id="blazor-error-ui">
@@ -26,6 +31,8 @@
         <a href="" class="reload">Reload</a>
         <a class="dismiss">🗙</a>
     </div>
+
+    <script src="js/sound.js"></script>
     <script src="_framework/blazor.webassembly.js"></script>
 </body>
 

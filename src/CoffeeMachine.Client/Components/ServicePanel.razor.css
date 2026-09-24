@@ -1,0 +1,213 @@
+.service-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: rgba(12, 9, 6, 0.72);
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.service-panel {
+    width: min(560px, 100%);
+    max-height: min(86vh, 720px);
+    overflow: auto;
+    background: linear-gradient(180deg, #2b2a26, #201d19);
+    border: 1px solid #131110;
+    border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+    color: #e8dfd0;
+}
+
+.service-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #14120f;
+    background: linear-gradient(180deg, #33302a, #282521);
+}
+
+.wrench {
+    width: 20px;
+    height: 20px;
+    fill: #c8a04e;
+}
+
+.service-header h2 {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 15px;
+    letter-spacing: 1.5px;
+    color: #e8dfd0;
+}
+
+.service-close {
+    margin-left: auto;
+    width: 30px;
+    height: 30px;
+    border: 1px solid #14120f;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #4a443b, #37322b);
+    color: #e8dfd0;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+}
+
+.service-close:hover {
+    filter: brightness(1.2);
+}
+
+.service-section {
+    padding: 12px 16px 4px;
+}
+
+.service-section h3 {
+    margin: 0 0 8px;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    color: #a89b83;
+}
+
+.stock-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.stock-row {
+    display: grid;
+    grid-template-columns: 34px 1fr auto auto;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.stock-label {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 13.5px;
+    font-weight: 700;
+}
+
+.stock-current {
+    font-family: "Courier New", monospace;
+    font-size: 12px;
+    color: #a89b83;
+}
+
+.item-swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.item-swatch.drink-cappuccino { background: radial-gradient(circle at 35% 30%, #f0c896, #6b4226); }
+.item-swatch.drink-latte { background: radial-gradient(circle at 35% 30%, #e9c9a0, #8f6a43); }
+.item-swatch.drink-decaf { background: radial-gradient(circle at 35% 30%, #7a5a42, #2c1a10); }
+
+.stepper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.step-btn {
+    width: 26px;
+    height: 26px;
+    border: 1px solid #14120f;
+    border-radius: 7px;
+    background: linear-gradient(180deg, #4a443b, #37322b);
+    color: #f0e8da;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.step-btn:hover:not(:disabled) {
+    filter: brightness(1.2);
+}
+
+.step-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.step-value {
+    min-width: 22px;
+    text-align: center;
+    font-family: "Courier New", monospace;
+    font-weight: 700;
+    color: #ffb000;
+}
+
+.service-footer {
+    display: flex;
+    gap: 10px;
+    padding: 14px 16px;
+    border-top: 1px solid #14120f;
+    margin-top: 10px;
+}
+
+.service-restock,
+.service-cancel {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.service-restock {
+    color: #221703;
+    background: linear-gradient(180deg, #e8c268, #c89a3c);
+    border: 1px solid #8a6a14;
+    box-shadow: 0 0 14px rgba(200, 154, 60, 0.35);
+}
+
+.service-restock:hover:not(:disabled) {
+    filter: brightness(1.08);
+}
+
+.service-restock:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.service-cancel {
+    margin-left: auto;
+    color: #d8cfc0;
+    background: linear-gradient(180deg, #46413a, #35302a);
+    border: 1px solid #14120f;
+}
+
+.service-error {
+    margin: 10px 16px 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(160, 50, 30, 0.3);
+    border: 1px solid rgba(220, 90, 60, 0.5);
+    color: #ffc9bd;
+    font-size: 12.5px;
+}
+
+.service-ok {
+    margin: 10px 16px 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(90, 150, 60, 0.22);
+    border: 1px solid rgba(140, 200, 100, 0.45);
+    color: #c8ecb0;
+    font-size: 12.5px;
+}

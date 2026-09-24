@@ -1,0 +1,202 @@
+@namespace CoffeeMachine.Client.Components
+@inject CoffeeMachine.Client.Services.MachineApiClient Api
+
+@* Discreet maintenance hatch: restock coins and items via POST /admin/refill.
+   Opened from the wrench button on the machine cabinet. *@
+
+@if (Open)
+{
+    <div class="service-overlay" tabindex="0" @onkeydown="OnKeyDownAsync" @onclick="CloseAsync">
+        <div class="service-panel" role="dialog" aria-modal="true" aria-labelledby="service-title"
+             @onclick:stopPropagation="true">
+            <header class="service-header">
+                <svg class="wrench" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M14.7 6.3a4.5 4.5 0 0 0-6.1 5.7L3 17.6a1.9 1.9 0 0 0 2.7 2.7l5.6-5.6a4.5 4.5 0 0 0 5.7-6.1l-3.1 3.1-2.2-2.2 3.1-3.1z" />
+                </svg>
+                <h2 id="service-title">Service — Restock</h2>
+                <button type="button" class="service-close" aria-label="Close service panel" @ref="_closeButton"
+                        @onclick="CloseAsync">✕</button>
+            </header>
+
+            @if (_error is not null)
+            {
+                <p class="service-error" role="alert">@_error</p>
+            }
+            @if (_done)
+            {
+                <p class="service-ok" role="status">Restocked — the machine is fully loaded again.</p>
+            }
+
+            <section class="service-section">
+                <h3>Coin stock</h3>
+                <div class="stock-rows">
+                    @foreach (var denomination in CoinDenominations)
+                    {
+                        <div class="stock-row">
+                            <Coin DenominationCents="@denomination" Size="30" />
+                            <span class="stock-label">@LabelFor(denomination)</span>
+                            <span class="stock-current" title="Currently in the machine">@CurrentCoins(denomination) in</span>
+                            <div class="stepper">
+                                <button type="button" class="step-btn" aria-label="Remove one @LabelFor(denomination) from restock"
+                                        disabled="@(_sending || _coinAdditions.GetValueOrDefault(denomination) == 0)"
+                                        @onclick="() => StepCoin(denomination, -1)">−</button>
+                                <span class="step-value" aria-live="off">@_coinAdditions.GetValueOrDefault(denomination)</span>
+                                <button type="button" class="step-btn" aria-label="Add one @LabelFor(denomination) to restock"
+                                        disabled="@_sending"
+                                        @onclick="() => StepCoin(denomination, 1)">+</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <section class="service-section">
+                <h3>Item stock</h3>
+                <div class="stock-rows">
+                    @foreach (var item in Menu)
+                    {
+                        <div class="stock-row">
+                            <span class="item-swatch drink-@item.Id" aria-hidden="true"></span>
+                            <span class="stock-label">@item.Name</span>
+                            <span class="stock-current">@CurrentItems(item.Id) in</span>
+                            <div class="stepper">
+                                <button type="button" class="step-btn" aria-label="Remove one @item.Name from restock"
+                                        disabled="@(_sending || _itemAdditions.GetValueOrDefault(item.Id) == 0)"
+                                        @onclick="() => StepItem(item.Id, -1)">−</button>
+                                <span class="step-value">@_itemAdditions.GetValueOrDefault(item.Id)</span>
+                                <button type="button" class="step-btn" aria-label="Add one @item.Name to restock"
+                                        disabled="@_sending"
+                                        @onclick="() => StepItem(item.Id, 1)">+</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <footer class="service-footer">
+                <button type="button" class="service-restock"
+                        disabled="@(_sending || !HasAdditions)"
+                        @onclick="RestockAsync">
+                    @(_sending ? "RESTOCKING…" : "APPLY RESTOCK")
+                </button>
+                <button type="button" class="service-cancel" @onclick="CloseAsync">CLOSE</button>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    private static readonly int[] CoinDenominations = [5, 10, 20, 50, 100, 200];
+
+    private readonly Dictionary<int, int> _coinAdditions = [];
+    private readonly Dictionary<string, int> _itemAdditions = [];
+    private bool _sending;
+    private bool _done;
+    private string? _error;
+    private bool _wasOpen;
+    private ElementReference _closeButton;
+
+    /// <summary>Whether the panel is visible.</summary>
+    [Parameter]
+    public bool Open { get; set; }
+
+    /// <summary>Current inventory snapshot from the machine state.</summary>
+    [Parameter]
+    public InventoryDto? Inventory { get; set; }
+
+    /// <summary>The menu (drives the item rows).</summary>
+    [Parameter]
+    public IReadOnlyList<MenuItemDto> Menu { get; set; } = [];
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    /// <summary>Raised after a successful restock so the machine can refresh.</summary>
+    [Parameter]
+    public EventCallback OnRefilled { get; set; }
+
+    private bool HasAdditions =>
+        _coinAdditions.Values.Any(v => v > 0) || _itemAdditions.Values.Any(v => v > 0);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Open && !_wasOpen)
+        {
+            _done = false;
+            _error = null;
+            _coinAdditions.Clear();
+            _itemAdditions.Clear();
+            await _closeButton.FocusAsync();
+        }
+
+        _wasOpen = Open;
+    }
+
+    private static string LabelFor(int denominationCents) =>
+        denominationCents >= 100 ? $"${denominationCents / 100}" : $"{denominationCents}¢";
+
+    private int CurrentCoins(int denominationCents) =>
+        Inventory?.Coins.GetValueOrDefault(denominationCents) ?? 0;
+
+    private int CurrentItems(string itemId) =>
+        Inventory?.Items.GetValueOrDefault(itemId) ?? 0;
+
+    private void StepCoin(int denominationCents, int delta)
+    {
+        var next = Math.Max(0, _coinAdditions.GetValueOrDefault(denominationCents) + delta);
+        _coinAdditions[denominationCents] = next;
+        _done = false;
+    }
+
+    private void StepItem(string itemId, int delta)
+    {
+        var next = Math.Max(0, _itemAdditions.GetValueOrDefault(itemId) + delta);
+        _itemAdditions[itemId] = next;
+        _done = false;
+    }
+
+    private async Task RestockAsync()
+    {
+        _sending = true;
+        _error = null;
+        _done = false;
+        StateHasChanged();
+        try
+        {
+            var denominations = _coinAdditions.Where(kv => kv.Value > 0).Select(kv => kv.Key).ToArray();
+            var counts = _coinAdditions.Where(kv => kv.Value > 0).Select(kv => kv.Value).ToArray();
+            var items = _itemAdditions.Where(kv => kv.Value > 0).ToDictionary(kv => kv.Key, kv => kv.Value);
+            await Api.RefillAsync(denominations, counts, items.Count > 0 ? items : null);
+            _coinAdditions.Clear();
+            _itemAdditions.Clear();
+            _done = true;
+            await OnRefilled.InvokeAsync();
+        }
+        catch
+        {
+            _error = "The restock request failed — try again.";
+        }
+        finally
+        {
+            _sending = false;
+        }
+    }
+
+    private Task CloseAsync()
+    {
+        if (_sending)
+        {
+            return Task.CompletedTask;
+        }
+
+        return OnClose.InvokeAsync();
+    }
+
+    private async Task OnKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await CloseAsync();
+        }
+    }
+}

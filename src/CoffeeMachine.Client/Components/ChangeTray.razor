@@ -1,0 +1,107 @@
+@namespace CoffeeMachine.Client.Components
+@inject CoffeeMachine.Client.Services.SoundService Sounds
+
+@* Change tray: after a purchase, coins cascade in one-by-one (~150ms apart)
+   with a clink each. TAKE CHANGE clears the tray. *@
+
+<div class="change-tray">
+    <div class="tray-caption">CHANGE</div>
+    <div class="tray-bowl @(_open ? "open" : null)" aria-hidden="true">
+        <span class="tray-flap"></span>
+        @if (_coins.Count == 0)
+        {
+            <span class="tray-empty">—</span>
+        }
+        else
+        {
+            @for (var i = 0; i < _coins.Count; i++)
+            {
+                var coin = _coins[i];
+                <span class="tray-coin @(coin.Fresh ? "fresh" : null)" @key="coin.Seq">
+                    <Coin DenominationCents="@coin.DenominationCents" Size="24" />
+                </span>
+            }
+            @if (_overflow > 0)
+            {
+                <span class="tray-overflow">+@_overflow</span>
+            }
+        }
+    </div>
+    <div class="tray-meta">
+        <span class="tray-total" aria-hidden="true">@FormatTotal</span>
+        <button type="button" class="take-btn"
+                @onclick="TakeAsync"
+                disabled="@(_coins.Count == 0)"
+                aria-label="Take your change">TAKE CHANGE</button>
+    </div>
+</div>
+
+@code {
+    private sealed record TrayCoin(int Seq, int DenominationCents, bool Fresh);
+
+    private const int MaxVisibleCoins = 24;
+
+    private readonly List<TrayCoin> _coins = [];
+    private int _overflow;
+    private int _totalCents;
+    private bool _open;
+    private int _seq;
+
+    /// <summary>Raised when the customer takes the change.</summary>
+    [Parameter]
+    public EventCallback OnTake { get; set; }
+
+    private string FormatTotal => $"${_totalCents / 100d:0.00}";
+
+    /// <summary>Cascades change coins into the tray one by one.</summary>
+    public async Task SpillAsync(IReadOnlyList<ChangeCoinDto> change, bool reducedMotion)
+    {
+        _coins.Clear();
+        _open = true;
+        _overflow = 0;
+        _totalCents = 0;
+        foreach (var group in change)
+        {
+            _totalCents += group.DenominationCents * group.Count;
+        }
+
+        var step = reducedMotion ? 15 : 150;
+        var index = 0;
+        foreach (var group in change)
+        {
+            for (var i = 0; i < group.Count; i++)
+            {
+                index++;
+                if (_coins.Count < MaxVisibleCoins)
+                {
+                    _coins.Add(new TrayCoin(++_seq, group.DenominationCents, true));
+                    StateHasChanged();
+                    await Sounds.PlayAsync("coinClink");
+                }
+                else
+                {
+                    _overflow++;
+                    StateHasChanged();
+                }
+
+                await Task.Delay(step);
+            }
+        }
+    }
+
+    /// <summary>Empties the tray (the customer took their coins).</summary>
+    public async Task TakeAsync()
+    {
+        if (_coins.Count == 0 && _overflow == 0)
+        {
+            return;
+        }
+
+        _coins.Clear();
+        _overflow = 0;
+        _totalCents = 0;
+        _open = false;
+        StateHasChanged();
+        await OnTake.InvokeAsync();
+    }
+}

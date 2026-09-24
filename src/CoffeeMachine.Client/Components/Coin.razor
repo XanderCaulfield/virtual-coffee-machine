@@ -1,0 +1,48 @@
+@namespace CoffeeMachine.Client.Components
+
+@* A single coin rendered as pure SVG. Three metal families, drawn with
+   gradients + a milled edge — no image assets anywhere. *@
+
+<svg class="coin @MetalClass" style="width:@(Size)px;height:@(Size)px"
+     viewBox="0 0 100 100" focusable="false" aria-hidden="true">
+    <defs>
+        <radialGradient id="coin-grad-@_uid" cx="40%" cy="30%" r="75%">
+            <stop offset="0%" style="stop-color: var(--coin-hi)" />
+            <stop offset="52%" style="stop-color: var(--coin-base)" />
+            <stop offset="100%" style="stop-color: var(--coin-low)" />
+        </radialGradient>
+    </defs>
+    <circle class="coin-rim" cx="50" cy="50" r="47.5" />
+    <circle class="coin-mill" cx="50" cy="50" r="46" />
+    <circle class="coin-body" cx="50" cy="50" r="42.5" fill="url(#coin-grad-@_uid)" />
+    <circle class="coin-ring" cx="50" cy="50" r="36.5" />
+    @if (DenominationCents == 200)
+    {
+        <circle class="coin-ring2" cx="50" cy="50" r="29.5" />
+    }
+    <text class="coin-text" x="50" y="61.5" text-anchor="middle">@Label</text>
+    <ellipse class="coin-sheen" cx="36" cy="27" rx="16" ry="10" />
+</svg>
+
+@code {
+    private readonly string _uid = Guid.NewGuid().ToString("N");
+
+    /// <summary>Denomination in cents (1, 2, 5, 10, 20, 50, 100, 200).</summary>
+    [Parameter, EditorRequired]
+    public int DenominationCents { get; set; }
+
+    /// <summary>Rendered size in CSS pixels.</summary>
+    [Parameter]
+    public int Size { get; set; } = 48;
+
+    private string Label => DenominationCents >= 100
+        ? $"${DenominationCents / 100}"
+        : $"{DenominationCents}¢";
+
+    private string MetalClass => DenominationCents switch
+    {
+        1 or 2 => "coin-copper",
+        100 or 200 => "coin-gold",
+        _ => "coin-silver",
+    };
+}

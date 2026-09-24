@@ -1,0 +1,257 @@
+.cup-area {
+    display: flex;
+    flex-direction: column;
+}
+
+.window {
+    position: relative;
+    height: 240px;
+    border-radius: 12px 12px 8px 8px;
+    overflow: hidden;
+    background: linear-gradient(180deg, #171a1f, #121418 60%, #0e1013);
+    border: 1px solid #0b0c0f;
+    box-shadow:
+        inset 0 2px 12px rgba(0, 0, 0, 0.85),
+        inset 0 -2px 8px rgba(0, 0, 0, 0.7);
+}
+
+.window-back {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 50% 115%, rgba(255, 176, 80, 0.07), transparent 55%),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.015) 0 2px, transparent 2px 4px);
+}
+
+/* ----------------------------------------------------------- cup stack */
+
+.cup-stack {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stack-cup {
+    width: 46px;
+    height: 24px;
+    margin-bottom: -14px;
+    background: linear-gradient(180deg, #e8e5df, #b9b5ac);
+    border: 1px solid #8f8b82;
+    border-radius: 3px 3px 12px 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    opacity: 0.85;
+}
+
+.stack-cup.s2 { transform: scale(0.9); opacity: 0.6; }
+.stack-cup.s3 { transform: scale(0.8); opacity: 0.35; }
+
+/* ----------------------------------------------------------- nozzle */
+
+.nozzle {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 34px;
+    height: 34px;
+    background: linear-gradient(180deg, #6a7079, #454a52 70%, #33373d);
+    border-radius: 0 0 10px 10px;
+    border: 1px solid #23262b;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
+    z-index: 5;
+}
+
+.nozzle-tip {
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 12px;
+    height: 7px;
+    background: #1b1e23;
+    border-radius: 0 0 5px 5px;
+}
+
+/* ----------------------------------------------------------- cup */
+
+.cup {
+    position: absolute;
+    bottom: 26px;
+    left: 50%;
+    width: 92px;
+    height: 82px;
+    transform: translateX(-50%);
+    background: linear-gradient(180deg, #f8f6f1, #d5d1c8 85%);
+    border: 1px solid #a9a499;
+    border-radius: 4px 4px 16px 16px / 4px 4px 26px 26px;
+    box-shadow: 0 8px 14px rgba(0, 0, 0, 0.55);
+    z-index: 4;
+    overflow: hidden;
+}
+
+.cup.dropping {
+    animation: cup-drop 0.6s cubic-bezier(0.3, 1.25, 0.45, 1) both;
+}
+
+@keyframes cup-drop {
+    0% { transform: translate(-50%, -170px) rotate(-8deg); }
+    62% { transform: translate(-50%, 2px) rotate(0.5deg); }
+    78% { transform: translate(-50%, -12px) rotate(-0.5deg); }
+    100% { transform: translate(-50%, 0) rotate(0deg); }
+}
+
+.cup-handle {
+    position: absolute;
+    right: -17px;
+    top: 20px;
+    width: 18px;
+    height: 26px;
+    border: 5px solid #cfcbbf;
+    border-left: none;
+    border-radius: 0 14px 14px 0;
+}
+
+/* ----------------------------------------------------------- liquid */
+
+.liquid {
+    position: absolute;
+    left: 5px;
+    right: 5px;
+    bottom: 5px;
+    height: 68%;
+    transform: scaleY(0);
+    transform-origin: bottom;
+    border-radius: 0 0 12px 12px;
+}
+
+.liquid.filling {
+    animation: liquid-rise 2s ease-in both;
+}
+
+.liquid.full {
+    transform: scaleY(1);
+}
+
+@keyframes liquid-rise {
+    from { transform: scaleY(0); }
+    to { transform: scaleY(1); }
+}
+
+.liquid-cappuccino {
+    background:
+        linear-gradient(180deg, #efe3d2 0 26%, rgba(239, 227, 210, 0) 26%),
+        linear-gradient(180deg, #6b4226, #4e2e19);
+}
+
+.liquid-latte {
+    background:
+        linear-gradient(180deg, #f3e9d8 0 14%, rgba(243, 233, 216, 0) 14%),
+        linear-gradient(180deg, #b98a5e, #8f6a43);
+}
+
+.liquid-decaf {
+    background: linear-gradient(180deg, #43291a, #2c1a10);
+}
+
+/* ----------------------------------------------------------- pour stream */
+
+.pour-stream {
+    position: absolute;
+    top: 36px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 9px;
+    height: 158px;
+    background: linear-gradient(180deg, rgba(122, 74, 43, 0.95), rgba(107, 66, 38, 0.9));
+    border-radius: 4px;
+    transform-origin: top;
+    animation: stream-grow 0.18s ease-out both, stream-flow 0.5s linear infinite;
+    z-index: 6;
+    filter: drop-shadow(0 0 4px rgba(160, 110, 60, 0.6));
+}
+
+@keyframes stream-grow {
+    from { transform: translateX(-50%) scaleY(0); }
+    to { transform: translateX(-50%) scaleY(1); }
+}
+
+@keyframes stream-flow {
+    from { background-position: 0 0; }
+    to { background-position: 0 22px; }
+}
+
+/* ----------------------------------------------------------- steam */
+
+.steam {
+    position: absolute;
+    left: 50%;
+    bottom: 108px;
+    z-index: 7;
+}
+
+.wisp {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 20px;
+    height: 30px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 70%);
+    filter: blur(4px);
+    opacity: 0;
+    animation: steam-rise 1.7s ease-out infinite;
+}
+
+.w1 { animation-delay: 0s; }
+.w2 { animation-delay: 0.55s; }
+.w3 { animation-delay: 1.1s; }
+
+.steam.idle .wisp {
+    animation-duration: 3.2s;
+}
+
+@keyframes steam-rise {
+    0% { transform: translate(0, 0) scale(0.55); opacity: 0; }
+    25% { opacity: 0.85; }
+    100% { transform: translate(-4px, -64px) scale(1.7); opacity: 0; }
+}
+
+/* ----------------------------------------------------------- glass & platform */
+
+.window-glass {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(115deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 30%, transparent 45%);
+    z-index: 9;
+}
+
+.platform {
+    height: 26px;
+    margin: 0 8px;
+    background: linear-gradient(180deg, #3f444c, #2c3036);
+    border: 1px solid #1c1f24;
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.platform-grate {
+    width: 60%;
+    height: 6px;
+    border-radius: 4px;
+    background: repeating-linear-gradient(90deg, #171a1e 0 6px, #0e1013 6px 10px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cup.dropping { animation-duration: 0.03s; }
+    .liquid.filling { animation-duration: 0.03s; }
+    .pour-stream { animation: stream-grow 0.03s ease-out both; }
+    .wisp { display: none; }
+}

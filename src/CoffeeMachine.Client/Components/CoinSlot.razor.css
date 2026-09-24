@@ -1,0 +1,147 @@
+.coin-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.panel-caption {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-align: center;
+    color: var(--metal-text-dim);
+}
+
+.coin-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(84px, 1fr));
+    gap: 10px;
+}
+
+.coin-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 6px 7px;
+    background: linear-gradient(180deg, #565c65, #3c4149);
+    border: 1px solid #23262b;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 3px 6px rgba(0, 0, 0, 0.4);
+    transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.15s ease;
+}
+
+.coin-btn:hover:not(:disabled) {
+    filter: brightness(1.1);
+}
+
+.coin-btn:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.coin-btn:disabled {
+    cursor: wait;
+    opacity: 0.75;
+}
+
+.coin-btn-label {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: #e9ecef;
+}
+
+.coin-btn-rejected {
+    background: linear-gradient(180deg, #4d4440, #372f2c);
+    border-color: #241e1b;
+}
+
+.coin-btn-rejected ::deep .coin {
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4)) saturate(0.65);
+    opacity: 0.92;
+}
+
+.not-accepted {
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: #ff8a7a;
+    border: 1px solid rgba(255, 92, 92, 0.5);
+    border-radius: 3px;
+    padding: 1px 4px;
+    background: rgba(120, 30, 20, 0.55);
+}
+
+/* ---------------------------------------------------------------- chute */
+
+.chute {
+    position: relative;
+    height: 86px;
+    margin: 4px 10px 0;
+}
+
+.chute-groove {
+    position: absolute;
+    inset: 0 30%;
+    background: linear-gradient(180deg, #14161a, #1f2227 60%, #0f1114);
+    border: 1px solid #0c0d10;
+    border-radius: 6px;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.85);
+}
+
+.chute-slot {
+    position: absolute;
+    inset: 6px 42%;
+    background: repeating-linear-gradient(180deg, #2a2e35 0 3px, #23262c 3px 6px);
+    border-radius: 4px;
+}
+
+.chute-mouth {
+    position: absolute;
+    bottom: -3px;
+    left: 26%;
+    right: 26%;
+    height: 8px;
+    background: #0b0c0e;
+    border-radius: 0 0 6px 6px;
+    box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.9);
+}
+
+.coin-drop {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    z-index: 3;
+    animation: coin-drop 0.48s cubic-bezier(0.5, 0, 0.9, 0.6) forwards;
+}
+
+@keyframes coin-drop {
+    0% {
+        transform: translateX(-50%) rotate(-8deg);
+        opacity: 1;
+    }
+
+    55% {
+        transform: translateX(-50%) rotate(7deg);
+        opacity: 1;
+    }
+
+    88% {
+        transform: translateX(-50%) translateY(46px) rotate(-3deg);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateX(-50%) translateY(48px) rotate(0deg);
+        opacity: 0.15;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .coin-drop {
+        animation-duration: 0.04s;
+    }
+}

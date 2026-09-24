@@ -1,0 +1,81 @@
+@namespace CoffeeMachine.Client.Components
+
+@* Coin entry panel. Eight coin buttons; 1¢ and 2¢ are visibly marked
+   NOT ACCEPTED but still playable — they drop down the chute, clank and
+   bounce into the coin-return tray. Accepted coins fall into the machine. *@
+
+<div class="coin-slot">
+    <div class="panel-caption">INSERT COINS</div>
+    <div class="coin-buttons" role="group" aria-label="Coin denominations">
+        @foreach (var coin in Coins)
+        {
+            <button type="button"
+                    class="coin-btn @(coin.NotAccepted ? "coin-btn-rejected" : null)"
+                    aria-label="@coin.AriaLabel"
+                    title="@coin.Title"
+                    disabled="@Busy"
+                    @onclick="() => OnPressAsync(coin.DenominationCents)">
+                <Coin DenominationCents="@coin.DenominationCents" Size="42" />
+                <span class="coin-btn-label">@coin.Label</span>
+                @if (coin.NotAccepted)
+                {
+                    <span class="not-accepted">NOT ACCEPTED</span>
+                }
+            </button>
+        }
+    </div>
+
+    <div class="chute" aria-hidden="true">
+        <div class="chute-groove"></div>
+        <div class="chute-slot"></div>
+        <div class="chute-mouth"></div>
+        @if (_dropping is (int denom, int seq))
+        {
+            <div class="coin-drop" @key="seq">
+                <Coin DenominationCents="@denom" Size="34" />
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private sealed record CoinSpec(int DenominationCents, string Label, bool NotAccepted, string AriaLabel, string Title);
+
+    private static readonly CoinSpec[] Coins =
+    [
+        new(1, "1¢", true, "Insert 1 cent coin (not accepted)", "1 cent coins are not accepted by this machine"),
+        new(2, "2¢", true, "Insert 2 cent coin (not accepted)", "2 cent coins are not accepted by this machine"),
+        new(5, "5¢", false, "Insert 5 cent coin", "Insert 5 cents"),
+        new(10, "10¢", false, "Insert 10 cent coin", "Insert 10 cents"),
+        new(20, "20¢", false, "Insert 20 cent coin", "Insert 20 cents"),
+        new(50, "50¢", false, "Insert 50 cent coin", "Insert 50 cents"),
+        new(100, "$1", false, "Insert 1 dollar coin", "Insert $1.00"),
+        new(200, "$2", false, "Insert 2 dollar coin", "Insert $2.00"),
+    ];
+
+    /// <summary>Raised when a coin button is pressed.</summary>
+    [Parameter]
+    public EventCallback<int> OnInsert { get; set; }
+
+    /// <summary>Disables the buttons while a coin is already travelling.</summary>
+    [Parameter]
+    public bool Busy { get; set; }
+
+    private (int DenominationCents, int Seq)? _dropping;
+    private int _seq;
+
+    private async Task OnPressAsync(int denominationCents)
+    {
+        await OnInsert.InvokeAsync(denominationCents);
+    }
+
+    /// <summary>Animates a coin falling down the chute (~0.48s, or near-instant with reduced motion).</summary>
+    public async Task DropCoinAsync(int denominationCents, bool reducedMotion)
+    {
+        _dropping = (denominationCents, ++_seq);
+        StateHasChanged();
+        await Task.Delay(reducedMotion ? 40 : 480);
+        _dropping = null;
+        StateHasChanged();
+    }
+}
