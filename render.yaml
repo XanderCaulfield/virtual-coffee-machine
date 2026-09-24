@@ -1,0 +1,35 @@
+# Render Blueprint (spec v1)
+# --------------------------
+# One-click deployment manifest. In the Render dashboard: New → Blueprint →
+# connect this GitHub repo → Render reads this file and provisions the
+# service below. (No `version:` key — spec v1 is the default.)
+#
+# Deploy flow: push/merge to `main` → Render builds the Docker image from
+# ./Dockerfile → container binds 0.0.0.0:8080 (ASPNETCORE_URLS in the
+# Dockerfile) → Render polls /healthz until a 200 → live URL issued.
+
+services:
+  # --- Virtual Coffee Machine web app -------------------------------------
+  - type: web                    # long-running HTTP service (vs. cron/worker/static)
+    name: virtual-coffee-machine # shown in the dashboard; used for the onrender.com slug
+    runtime: docker              # build + run the repo's Dockerfile (defaults to ./Dockerfile)
+    # `repo` is intentionally omitted: for a Blueprint, Render uses the
+    # repository the Blueprint was connected from. (Only set `repo:` if the
+    # render.yaml lives in a different repo than the service code.)
+    branch: main                 # deploy target branch — matches the CI/CD `main` flow
+    region: oregon               # US-West; closest free-tier region for this demo
+    plan: free                   # free tier: sleeps after ~15 min idle, ~1 min cold start
+    autoDeploy: true             # redeploy automatically on every push to `main`
+    pullRequestPreviewsEnabled: false # keep it single-service; PR previews would waste the free slot
+    healthCheckPath: /healthz    # Render GETs this path; 200 = healthy (implemented by the API)
+    envVars:
+      # Pin the container's listener port. Render injects $PORT for Docker
+      # services (default 10000); the Dockerfile's
+      # `ENV ASPNETCORE_URLS=http://+:8080` already binds 8080, so we force
+      # Render's PORT to match. 8080 is the canonical contract for this app.
+      - key: PORT
+        value: "8080"            # quoted on purpose: Blueprint env values must be strings
+      # Production config: standard ASP.NET Core logging/error behavior,
+      # no appsettings.Development fallbacks on the hosted instance.
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
