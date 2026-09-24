@@ -1,0 +1,105 @@
+@namespace CoffeeMachine.Client.Components
+
+@* The machine's front panel: a true seven-segment LED credit readout
+   (segments drawn as SVG polygons — no font downloads) plus a dot-matrix
+   style status line. Announced politely for screen readers. *@
+
+<div class="display" role="status" aria-live="polite" aria-label="Machine display">
+    <div class="display-bezel">
+        <div class="credit-label" aria-hidden="true">CREDIT</div>
+        <div class="readout" aria-hidden="true">
+            <span class="currency-mark">$</span>
+            @foreach (var ch in Digits)
+            {
+                if (ch == '.')
+                {
+                    <span class="seg-dot" aria-hidden="true"></span>
+                }
+                else if (Segments.TryGetValue(ch, out var mask))
+                {
+                    <svg class="seg-digit" viewBox="0 0 100 170" focusable="false">
+                        @for (var i = 0; i < 7; i++)
+                        {
+                            var on = (mask & (1 << i)) != 0;
+                            <polygon class="@(on ? "seg seg-on" : "seg")" points="@SegmentShapes[i]" />
+                        }
+                    </svg>
+                }
+            }
+        </div>
+        <div class="status-line">
+            <span class="status-text tone-@Tone @(Blink ? "blink" : null)" @key="StatusKey">@StatusText</span>
+        </div>
+    </div>
+    <div class="display-glare" aria-hidden="true"></div>
+</div>
+
+@code {
+    /// <summary>Pre-formatted credit, e.g. "$2.50" — rendered as 7-seg digits.</summary>
+    [Parameter, EditorRequired]
+    public string BalanceDisplay { get; set; } = "$0.00";
+
+    /// <summary>LED status text, e.g. "INSERT COIN".</summary>
+    [Parameter]
+    public string StatusText { get; set; } = "INSERT COIN";
+
+    /// <summary>Bump to re-run the LED entry animation for a changed status.</summary>
+    [Parameter]
+    public int StatusKey { get; set; }
+
+    /// <summary>info = amber, warn = red, good = green.</summary>
+    [Parameter]
+    public string Tone { get; set; } = "info";
+
+    /// <summary>True to keep blinking the status (rejections, urgent).</summary>
+    [Parameter]
+    public bool Blink { get; set; }
+
+    private string Digits
+    {
+        get
+        {
+            var raw = new string(BalanceDisplay.Where(char.IsDigit).ToArray());
+            if (raw.Length == 0)
+            {
+                raw = "0";
+            }
+
+            if (raw.Length > 4)
+            {
+                raw = raw[^4..];
+            }
+
+            raw = raw.PadLeft(4, '0');
+            return raw[..2] + "." + raw[2..];
+        }
+    }
+
+    // Segment bitmasks: a=1 b=2 c=4 d=8 e=16 f=32 g=64.
+    private static readonly IReadOnlyDictionary<char, int> Segments = new Dictionary<char, int>
+    {
+        ['0'] = 0b0111111,
+        ['1'] = 0b0000110,
+        ['2'] = 0b1011011,
+        ['3'] = 0b1001111,
+        ['4'] = 0b1100110,
+        ['5'] = 0b1101101,
+        ['6'] = 0b1111101,
+        ['7'] = 0b0000111,
+        ['8'] = 0b1111111,
+        ['9'] = 0b1101111,
+        ['-'] = 0b1000000,
+    };
+
+    // Hexagonal segment polygons in a 100x170 viewBox, ordered a..g.
+    private static readonly string[] SegmentShapes =
+    [
+        "27,4 73,4 80,11 73,18 27,18 20,11",      // a  top
+        "82,21 89,14 96,21 96,66 89,73 82,66",    // b  top-right
+        "82,94 89,87 96,94 96,139 89,146 82,139", // c  bottom-right
+        "27,152 73,152 80,159 73,166 27,166 20,159", // d  bottom
+        "4,94 11,87 18,94 18,139 11,146 4,139",   // e  bottom-left
+        "4,21 11,14 18,21 18,66 11,73 4,66",      // f  top-left
+        "27,78 73,78 80,85 73,92 27,92 20,85",    // g  middle
+    ];
+}

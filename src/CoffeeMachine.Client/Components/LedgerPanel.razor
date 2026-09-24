@@ -1,0 +1,125 @@
+@namespace CoffeeMachine.Client.Components
+@inject CoffeeMachine.Client.Services.MachineApiClient Api
+
+@* Collapsible ledger of recent transactions for this machine, fetched from
+   GET /transactions and refreshed after every purchase and refund. *@
+
+<section class="ledger @(_open ? "open" : null)">
+    <button type="button" class="ledger-toggle"
+            @onclick="ToggleAsync"
+            aria-expanded="@_open"
+            aria-controls="ledger-body"
+            aria-label="@(_open ? "Hide transaction ledger" : "Show transaction ledger")">
+        <svg class="chevron" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <path d="M3 6l5 5 5-5" />
+        </svg>
+        <span class="ledger-title">LEDGER</span>
+        <span class="ledger-count" aria-hidden="true">@Rows.Count</span>
+    </button>
+
+    @if (_open)
+    {
+        <div id="ledger-body" class="ledger-body">
+            @if (_loading)
+            {
+                <p class="ledger-empty">Loading transactions…</p>
+            }
+            else if (Rows.Count == 0)
+            {
+                <p class="ledger-empty">No purchases yet — the machine awaits its first customer.</p>
+            }
+            else
+            {
+                <div class="ledger-scroll">
+                    <table class="ledger-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Time</th>
+                                <th scope="col">Item</th>
+                                <th scope="col" class="num">Paid</th>
+                                <th scope="col" class="num">Change</th>
+                                <th scope="col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Rows)
+                            {
+                                <tr>
+                                    <td>@row.Timestamp.ToLocalTime().ToString("HH:mm:ss")</td>
+                                    <td>@ItemName(row)</td>
+                                    <td class="num">@Money(row.PaidCents)</td>
+                                    <td class="num">@Money(row.ChangeCents)</td>
+                                    <td>
+                                        <span class="status-chip @(row.Status == "Purchased" ? "purchased" : "cancelled")">@row.Status</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private const int PageSize = 10;
+
+    private bool _open;
+    private bool _loading;
+    private IReadOnlyList<TransactionDto> Rows { get; set; } = [];
+    private Dictionary<string, string> _itemNames = [];
+    private bool _namesLoaded;
+
+    /// <summary>Re-fetches the ledger (called by the machine after each transaction).</summary>
+    public async Task RefreshAsync()
+    {
+        _loading = true;
+        try
+        {
+            if (!_namesLoaded)
+            {
+                await LoadNamesAsync();
+            }
+
+            Rows = await Api.GetTransactionsAsync(PageSize);
+        }
+        catch
+        {
+            // The ledger is auxiliary — never take the machine down for it.
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadNamesAsync()
+    {
+        try
+        {
+            var menu = await Api.GetMenuAsync();
+            _itemNames = menu.ToDictionary(m => m.Id, m => m.Name);
+            _namesLoaded = true;
+        }
+        catch
+        {
+            _namesLoaded = false;
+        }
+    }
+
+    private async Task ToggleAsync()
+    {
+        _open = !_open;
+        if (_open && !_loading)
+        {
+            await RefreshAsync();
+        }
+    }
+
+    private string ItemName(TransactionDto row) =>
+        row.Status == "Cancelled" ? "—" : _itemNames.GetValueOrDefault(row.ItemId, row.ItemId);
+
+    private static string Money(int cents) => $"${cents / 100d:0.00}";
+}

@@ -1,0 +1,57 @@
+@namespace CoffeeMachine.Client.Components
+
+@* The three drink buttons. They glow when the balance covers the price,
+   sit dimmed when it doesn't, and are disabled while the machine brews.
+   Each drink gets its own accent colour. *@
+
+<div class="coffee-panel">
+    <div class="panel-caption">SELECT DRINK</div>
+    <div class="coffee-buttons" role="group" aria-label="Drink selection">
+        @for (var i = 0; i < Items.Count; i++)
+        {
+            var item = Items[i];
+            var affordable = item.InStock && BalanceCents >= item.PriceCents;
+            <button type="button"
+                    class="coffee-btn @(affordable ? "lit" : null) @(!item.InStock ? "out" : null)"
+                    aria-label="Select @item.Name, @item.PriceDisplay"
+                    title="@item.Name — @item.PriceDisplay"
+                    disabled="@(Disabled || !item.InStock)"
+                    @onclick="() => OnSelect.InvokeAsync(item.Id)">
+                <span class="drink-icon drink-@item.Id" aria-hidden="true">
+                    <svg viewBox="0 0 34 34" focusable="false">
+                        <path class="steam-s" d="M11 7c-1.2-2 1-4 2.6-2.8" />
+                        <path class="steam-s" d="M17 5.5c-1.2-2 1-4 2.6-2.8" />
+                        <path class="steam-s" d="M23 7c-1.2-2 1-4 2.6-2.8" />
+                        <path class="cup-body" d="M6 10h15v8.5a6.5 6.5 0 0 1-6.5 6.5h-2A6.5 6.5 0 0 1 6 18.5z" />
+                        <path class="cup-handle" d="M21 12h3.2a3.2 3.2 0 0 1 0 6.4H21" />
+                        <path class="cup-saucer" d="M5 29.5h17" />
+                    </svg>
+                </span>
+                <span class="drink-name">@item.Name</span>
+                <span class="drink-price">@item.PriceDisplay</span>
+                @if (!item.InStock)
+                {
+                    <span class="out-badge">OUT</span>
+                }
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>The menu, in display order.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<MenuItemDto> Items { get; set; } = [];
+
+    /// <summary>Current credit in cents — drives the glow.</summary>
+    [Parameter]
+    public int BalanceCents { get; set; }
+
+    /// <summary>True while the machine is brewing or otherwise busy.</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>Raised with the item id when a button is pressed.</summary>
+    [Parameter]
+    public EventCallback<string> OnSelect { get; set; }
+}

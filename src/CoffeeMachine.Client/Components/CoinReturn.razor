@@ -1,0 +1,98 @@
+@namespace CoffeeMachine.Client.Components
+
+@* Coin-return tray: rejected 1¢/2¢ coins and refunds pile up here,
+   each new coin popping in with a little bounce. TAKE clears the pile. *@
+
+<div class="coin-return">
+    <div class="tray-caption">COIN RETURN</div>
+    <div class="return-bowl" aria-hidden="true">
+        @if (_coins.Count == 0)
+        {
+            <span class="return-empty">empty</span>
+        }
+        else
+        {
+            @for (var i = 0; i < _coins.Count; i++)
+            {
+                var coin = _coins[i];
+                <span class="return-coin @(coin.Fresh ? "fresh" : null)" @key="coin.Seq">
+                    <Coin DenominationCents="@coin.DenominationCents" Size="26" />
+                </span>
+            }
+            @if (_overflow > 0)
+            {
+                <span class="return-overflow">+@_overflow</span>
+            }
+        }
+    </div>
+    <button type="button" class="take-btn"
+            @onclick="TakeAsync"
+            disabled="@(_coins.Count == 0 && _overflow == 0)"
+            aria-label="Take returned coins">TAKE</button>
+</div>
+
+@code {
+    private sealed record ReturnCoin(int Seq, int DenominationCents, bool Fresh);
+
+    private const int MaxVisibleCoins = 18;
+
+    private readonly List<ReturnCoin> _coins = [];
+    private int _overflow;
+    private int _seq;
+
+    /// <summary>Raised when the customer takes the returned coins.</summary>
+    [Parameter]
+    public EventCallback OnTake { get; set; }
+
+    /// <summary>Total value currently sitting in the tray (cents).</summary>
+    public int ValueCents { get; private set; }
+
+    /// <summary>Adds one coin with a bounce-in animation.</summary>
+    public async Task AddAsync(int denominationCents, bool reducedMotion)
+    {
+        Add(denominationCents);
+        StateHasChanged();
+        await Task.Delay(reducedMotion ? 20 : 240);
+    }
+
+    /// <summary>Adds a batch of coins one-by-one (~90ms apart).</summary>
+    public async Task AddManyAsync(IReadOnlyList<int> denominations, bool reducedMotion)
+    {
+        var step = reducedMotion ? 12 : 90;
+        foreach (var denomination in denominations)
+        {
+            Add(denomination);
+            StateHasChanged();
+            await Task.Delay(step);
+        }
+    }
+
+    private void Add(int denominationCents)
+    {
+        if (_coins.Count < MaxVisibleCoins)
+        {
+            _coins.Add(new ReturnCoin(++_seq, denominationCents, true));
+        }
+        else
+        {
+            _overflow++;
+        }
+
+        ValueCents += denominationCents;
+    }
+
+    /// <summary>Empties the tray.</summary>
+    public async Task TakeAsync()
+    {
+        if (_coins.Count == 0 && _overflow == 0)
+        {
+            return;
+        }
+
+        _coins.Clear();
+        _overflow = 0;
+        ValueCents = 0;
+        StateHasChanged();
+        await OnTake.InvokeAsync();
+    }
+}

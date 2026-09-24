@@ -1,0 +1,87 @@
+@namespace CoffeeMachine.Client.Components
+@inject CoffeeMachine.Client.Services.SoundService Sounds
+
+@* The dispensing window: a cup drops from the stack into place, a pour
+   stream fills it (liquid level rises), steam wisps drift up, and the cup
+   lingers with a gentle idle steam once the brew is done.
+   With prefers-reduced-motion the whole sequence compresses to ~0.1s. *@
+
+<div class="cup-area" aria-hidden="true">
+    <div class="window">
+        <div class="window-back"></div>
+        <div class="cup-stack">
+            <span class="stack-cup s1"></span>
+            <span class="stack-cup s2"></span>
+            <span class="stack-cup s3"></span>
+        </div>
+        <div class="nozzle"><span class="nozzle-tip"></span></div>
+
+        @if (_phase != Phase.Idle)
+        {
+            <div class="cup @(_phase == Phase.CupDrop ? "dropping" : null)" @key="_cupKey">
+                <span class="cup-handle" aria-hidden="true"></span>
+                <span class="liquid @DrinkClass @(_phase == Phase.Pour ? "filling" : _phase is Phase.Steam or Phase.Done ? "full" : null)"></span>
+            </div>
+        }
+
+        @if (_phase == Phase.Pour)
+        {
+            <span class="pour-stream"></span>
+        }
+
+        @if (_phase is Phase.Steam or Phase.Done)
+        {
+            <div class="steam @(_phase == Phase.Done ? "idle" : null)">
+                <span class="wisp w1"></span>
+                <span class="wisp w2"></span>
+                <span class="wisp w3"></span>
+            </div>
+        }
+        <div class="window-glass"></div>
+    </div>
+    <div class="platform"><span class="platform-grate"></span></div>
+</div>
+
+@code {
+    private enum Phase { Idle, CupDrop, Pour, Steam, Done }
+
+    private Phase _phase = Phase.Idle;
+    private int _cupKey;
+
+    /// <summary>CSS class tinting the liquid (cappuccino / latte / decaf).</summary>
+    [Parameter]
+    public string DrinkClass { get; set; } = "latte";
+
+    /// <summary>
+    /// Runs the full brew animation: cup drop (~0.6s) → pour & fill (~2.0s)
+    /// → steam (~0.9s). Total ≈ 3.5s, or ~0.1s with reduced motion.
+    /// </summary>
+    public async Task BrewAsync(string drinkClass, bool reducedMotion)
+    {
+        DrinkClass = drinkClass;
+        _cupKey++;
+        _phase = Phase.CupDrop;
+        StateHasChanged();
+        await Task.Delay(reducedMotion ? 30 : 600);
+
+        _phase = Phase.Pour;
+        StateHasChanged();
+        await Sounds.PlayAsync("pour", reducedMotion ? 120 : 2000);
+        await Task.Delay(reducedMotion ? 30 : 2000);
+
+        _phase = Phase.Steam;
+        StateHasChanged();
+        await Sounds.PlayAsync("steam", reducedMotion ? 100 : 1000);
+        await Task.Delay(reducedMotion ? 30 : 900);
+
+        _phase = Phase.Done;
+        StateHasChanged();
+    }
+
+    /// <summary>Clears the window (used before a fresh brew).</summary>
+    public void Reset()
+    {
+        _phase = Phase.Idle;
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,129 @@
+.change-tray {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.tray-caption {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-align: center;
+    color: var(--metal-text-dim);
+}
+
+.tray-bowl {
+    position: relative;
+    min-height: 74px;
+    padding: 12px 12px 8px;
+    background: linear-gradient(180deg, #17181c, #101114);
+    border: 1px solid #0a0b0d;
+    border-radius: 10px;
+    box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    align-items: flex-end;
+    align-content: flex-end;
+    overflow: hidden;
+}
+
+.tray-flap {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 12px;
+    background: linear-gradient(180deg, #3b4048, #2a2e34);
+    border-bottom: 1px solid #17191d;
+    transform-origin: top;
+    transform: rotateX(24deg);
+    transition: transform 0.5s cubic-bezier(0.3, 1.3, 0.4, 1);
+    z-index: 2;
+}
+
+.tray-bowl.open .tray-flap {
+    transform: rotateX(78deg);
+}
+
+.tray-empty {
+    color: #4b5159;
+    font-family: "Courier New", monospace;
+    font-weight: 700;
+    margin: 0 auto;
+    padding-bottom: 6px;
+}
+
+.tray-coin {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+}
+
+.tray-coin.fresh {
+    animation: coin-pop 0.32s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+
+@keyframes coin-pop {
+    0% { transform: translateY(-34px) scale(0.4); opacity: 0; }
+    60% { transform: translateY(2px) scale(1.15); opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.tray-overflow {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: #c8a04e;
+    padding-bottom: 6px;
+}
+
+.tray-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.tray-total {
+    font-family: "Courier New", monospace;
+    font-weight: 700;
+    font-size: 15px;
+    color: #ffb000;
+    text-shadow: 0 0 8px rgba(255, 176, 0, 0.5);
+}
+
+.take-btn {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    padding: 7px 12px;
+    color: #e9ecef;
+    background: linear-gradient(180deg, #545b65, #3b4149);
+    border: 1px solid #22262c;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 2px 5px rgba(0, 0, 0, 0.45);
+    transition: filter 0.1s ease, transform 0.08s ease;
+}
+
+.take-btn:hover:not(:disabled) {
+    filter: brightness(1.15);
+}
+
+.take-btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.take-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tray-flap { transition: none; }
+    .tray-coin.fresh { animation-duration: 0.02s; }
+}

@@ -1,0 +1,600 @@
+@page "/"
+@namespace CoffeeMachine.Client.Components
+@implements IAsyncDisposable
+@inject IJSRuntime Js
+@inject NavigationManager Nav
+@inject CoffeeMachine.Client.Services.MachineApiClient Api
+@inject CoffeeMachine.Client.Services.SoundService Sounds
+@inject CoffeeMachine.Client.Services.MotionPreferences Motion
+
+@* The virtual vending machine: wires the display, coin slot, drink buttons,
+   brew window and trays together, drives the ~3.5s brew sequence, handles
+   keyboard input and owns all client-side machine state. *@
+
+<div class="machine-page @(_reducedMotion ? "reduce-motion" : null)">
+
+    <header class="machine-header">
+        <div class="brand">
+            <svg class="brand-cup" viewBox="0 0 34 34" aria-hidden="true" focusable="false">
+                <path class="cup-body" d="M6 12h16v8a6.5 6.5 0 0 1-6.5 6.5h-3A6.5 6.5 0 0 1 6 20z" />
+                <path class="cup-handle" d="M22 14h3a3 3 0 0 1 0 6h-3" />
+                <path class="cup-steam" d="M11 7c-1.4-2.2 1-4.2 2.8-3" />
+                <path class="cup-steam" d="M17 5.5c-1.4-2.2 1-4.2 2.8-3" />
+                <path class="cup-steam" d="M23 7c-1.4-2.2 1-4.2 2.8-3" />
+            </svg>
+            <div class="brand-text">
+                <h1>BREWMASTER <span class="brand-year">2000</span></h1>
+                <p class="tagline">Roasted &amp; rendered for CJ Global Tech</p>
+            </div>
+        </div>
+        <div class="header-badges">
+            <span class="badge badge-aud" title="Australian denominations">AUD</span>
+            @if (_demo)
+            {
+                <span class="badge badge-demo" title="Running against the in-process fake backend">DEMO</span>
+            }
+            <button type="button" class="mute-btn"
+                    aria-label="@(Sounds.Muted ? "Unmute machine sounds" : "Mute machine sounds")"
+                    aria-pressed="@Sounds.Muted"
+                    title="@(Sounds.Muted ? "Unmute (M)" : "Mute (M)")"
+                    @onclick="ToggleMuteAsync">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path class="speaker" d="M4 9v6h4l5 4V5L8 9z" />
+                    @if (Sounds.Muted)
+                    {
+                        <path class="mute-x" d="M16 9l5 6M21 9l-5 6" />
+                    }
+                    else
+                    {
+                        <path class="sound-wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" />
+                    }
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    @if (_loading)
+    {
+        <div class="machine-cabinet cabinet-loading" aria-busy="true">
+            <div class="powering">
+                <span class="powering-led"></span>
+                <p class="powering-text">POWERING UP…</p>
+                <p class="powering-sub" aria-live="polite">Contacting the machine</p>
+            </div>
+        </div>
+    }
+    else if (_loadError is not null)
+    {
+        <div class="machine-cabinet cabinet-loading" role="alert">
+            <div class="powering">
+                <p class="powering-text tone-error">MACHINE OFFLINE</p>
+                <p class="powering-sub">@_loadError</p>
+                <button type="button" class="retry-btn" @onclick="LoadInitialAsync">RETRY</button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="machine-cabinet">
+            <div class="cabinet-halo" aria-hidden="true"></div>
+
+            <div class="cabinet-display">
+                <Display BalanceDisplay="@Money(_balance)" StatusText="@_statusText"
+                          StatusKey="@_statusKey" Tone="@_statusTone" Blink="@_statusBlink" />
+            </div>
+
+            <div class="cabinet-body">
+                <div class="cabinet-left">
+                    <CoinSlot @ref="_coinSlot" Busy="@_insertBusy" OnInsert="InsertCoinAsync" />
+                    <div class="cabinet-gap"></div>
+                    <CoffeeButton Items="@_menu" BalanceCents="@_balance"
+                                  Disabled="@(_brewing || _operating)" OnSelect="SelectItemAsync" />
+                </div>
+                <div class="cabinet-right">
+                    <CupArea @ref="_cupArea" />
+                </div>
+            </div>
+
+            <div class="cabinet-bottom">
+                <ChangeTray @ref="_changeTray" OnTake="OnChangeTakenAsync" />
+                <div class="cancel-zone">
+                    <button type="button" class="cancel-btn"
+                            disabled="@(_brewing || _operating || _balance <= 0)"
+                            aria-label="Cancel and refund inserted coins"
+                            @onclick="CancelAsync">
+                        CANCEL<br /><span class="cancel-sub">REFUND</span>
+                    </button>
+                </div>
+                <CoinReturn @ref="_coinReturn" OnTake="OnReturnTakenAsync" />
+            </div>
+
+            <button type="button" class="service-wrench"
+                    aria-label="Open service panel" title="Service"
+                    @onclick="() => _serviceOpen = true">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M14.7 6.3a4.5 4.5 0 0 0-6.1 5.7L3 17.6a1.9 1.9 0 0 0 2.7 2.7l5.6-5.6a4.5 4.5 0 0 0 5.7-6.1l-3.1 3.1-2.2-2.2 3.1-3.1z" />
+                </svg>
+            </button>
+        </div>
+
+        <LedgerPanel @ref="_ledger" />
+
+        <ServicePanel Open="@_serviceOpen"
+                      Inventory="@_state?.Inventory"
+                      Menu="@_menu"
+                      OnClose="() => _serviceOpen = false"
+                      OnRefilled="HandleRefilledAsync" />
+    }
+
+    <footer class="machine-footer">
+        <div class="key-legend" aria-label="Keyboard shortcuts">
+            <span class="legend-label">KEYS</span>
+            <span class="legend-item"><kbd>Q</kbd>5¢</span>
+            <span class="legend-item"><kbd>W</kbd>10¢</span>
+            <span class="legend-item"><kbd>E</kbd>20¢</span>
+            <span class="legend-item"><kbd>R</kbd>50¢</span>
+            <span class="legend-item"><kbd>T</kbd>$1</span>
+            <span class="legend-item"><kbd>Y</kbd>$2</span>
+            <span class="legend-sep" aria-hidden="true"></span>
+            <span class="legend-item"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>drinks</span>
+            <span class="legend-item"><kbd>C</kbd>cancel</span>
+            <span class="legend-item"><kbd>M</kbd>mute</span>
+        </div>
+        <p class="footer-note">All prices in AUD · 1¢ &amp; 2¢ coins are not accepted</p>
+    </footer>
+</div>
+
+@code {
+    private MachineStateDto? _state;
+    private IReadOnlyList<MenuItemDto> _menu = [];
+    private int _balance;
+
+    private bool _loading = true;
+    private string? _loadError;
+    private bool _reducedMotion;
+    private bool _demo;
+
+    private bool _brewing;
+    private bool _operating;
+    private bool _insertBusy;
+
+    private string _statusText = "INSERT COIN";
+    private int _statusKey;
+    private string _statusTone = "info";
+    private bool _statusBlink;
+    private CancellationTokenSource? _statusCts;
+
+    private readonly List<int> _insertedHistory = [];
+
+    private CoinSlot _coinSlot = default!;
+    private CupArea _cupArea = default!;
+    private ChangeTray _changeTray = default!;
+    private CoinReturn _coinReturn = default!;
+    private LedgerPanel _ledger = default!;
+    private bool _serviceOpen;
+
+    private DotNetObjectReference<Machine>? _keyboardRef;
+
+    // ---------------------------------------------------------------- lifecycle
+
+    protected override async Task OnInitializedAsync()
+    {
+        _demo = HasDemoFlag(Nav.Uri);
+        await Sounds.InitialiseAsync();
+        _reducedMotion = await Motion.ReducedAsync;
+        await LoadInitialAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _keyboardRef = DotNetObjectReference.Create(this);
+            await Js.InvokeVoidAsync("coffeeKeyboard.register", _keyboardRef);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _statusCts?.Cancel();
+        if (_keyboardRef is not null)
+        {
+            try
+            {
+                await Js.InvokeVoidAsync("coffeeKeyboard.unregister");
+            }
+            catch (JSException)
+            {
+                // Best effort during teardown.
+            }
+
+            _keyboardRef.Dispose();
+        }
+    }
+
+    private async Task LoadInitialAsync()
+    {
+        _loading = true;
+        _loadError = null;
+        try
+        {
+            _state = await Api.GetMachineAsync();
+            _menu = _state.Menu.Count > 0 ? _state.Menu : await Api.GetMenuAsync();
+            _balance = _state.BalanceCents;
+            ApplyDefaultStatus(force: true);
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RefreshStateSilentlyAsync()
+    {
+        try
+        {
+            _state = await Api.GetMachineAsync();
+            if (_state.Menu.Count > 0)
+            {
+                _menu = _state.Menu;
+            }
+
+            _balance = _state.BalanceCents;
+            if (_statusCts is null)
+            {
+                ApplyDefaultStatus(force: true);
+            }
+        }
+        catch
+        {
+            // Silent: transient refreshes must never break the UI.
+        }
+    }
+
+    // ---------------------------------------------------------------- display status
+
+    private void SetStatus(string text, string tone = "info", bool blink = false, int ms = 2600, bool sticky = false)
+    {
+        _statusCts?.Cancel();
+        _statusCts = null;
+        _statusText = text;
+        _statusTone = tone;
+        _statusBlink = blink;
+        _statusKey++;
+        if (!sticky)
+        {
+            var cts = new CancellationTokenSource();
+            _statusCts = cts;
+            _ = ResetStatusAfterAsync(ms, cts.Token);
+        }
+    }
+
+    private async Task ResetStatusAfterAsync(int ms, CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(ms, ct);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        if (!ct.IsCancellationRequested)
+        {
+            _statusCts = null;
+            ApplyDefaultStatus(force: true);
+            StateHasChanged();
+        }
+    }
+
+    private void ApplyDefaultStatus(bool force = false)
+    {
+        if (!force && _statusCts is not null)
+        {
+            return;
+        }
+
+        _statusCts?.Cancel();
+        _statusCts = null;
+        _statusBlink = false;
+
+        if (!string.IsNullOrWhiteSpace(_state?.StatusMessage))
+        {
+            _statusText = _state!.StatusMessage!;
+            _statusTone = "warn";
+        }
+        else
+        {
+            _statusText = _balance > 0 && _menu.Any(m => m.InStock && _balance >= m.PriceCents)
+                ? "SELECT DRINK"
+                : "INSERT COIN";
+            _statusTone = "info";
+        }
+
+        _statusKey++;
+    }
+
+    // ---------------------------------------------------------------- coin flow
+
+    private async Task InsertCoinAsync(int denominationCents)
+    {
+        if (_insertBusy)
+        {
+            return;
+        }
+
+        _insertBusy = true;
+        try
+        {
+            await Sounds.PlayAsync("buttonPress");
+            await _coinSlot.DropCoinAsync(denominationCents, _reducedMotion);
+
+            var result = await Api.InsertCoinAsync(denominationCents);
+            if (result.Accepted)
+            {
+                _balance = result.BalanceCents;
+                _insertedHistory.Add(denominationCents);
+                await Sounds.PlayAsync("coinInsert");
+                SetStatus(_menu.Any(m => m.InStock && _balance >= m.PriceCents) ? "SELECT DRINK" : "INSERT COIN");
+            }
+            else
+            {
+                await Sounds.PlayAsync("coinReject");
+                await _coinReturn.AddAsync(denominationCents, _reducedMotion);
+                SetStatus(denominationCents switch
+                {
+                    1 => "1¢ REJECTED",
+                    2 => "2¢ REJECTED",
+                    _ => "COIN REJECTED",
+                }, "warn", blink: true);
+            }
+
+            await RefreshStateSilentlyAsync();
+        }
+        catch (ApiException ex)
+        {
+            await HandleApiExceptionAsync(ex);
+        }
+        catch
+        {
+            SetStatus("MACHINE ERROR", "warn", blink: true);
+        }
+        finally
+        {
+            _insertBusy = false;
+        }
+    }
+
+    // ---------------------------------------------------------------- purchase flow
+
+    private async Task SelectItemAsync(string itemId)
+    {
+        if (_brewing || _operating)
+        {
+            return;
+        }
+
+        var item = _menu.FirstOrDefault(m => m.Id == itemId);
+        if (item is null)
+        {
+            return;
+        }
+
+        if (!item.InStock)
+        {
+            SetStatus("OUT OF STOCK", "warn");
+            return;
+        }
+
+        if (_balance < item.PriceCents)
+        {
+            SetStatus("INSERT COIN", "warn");
+            return;
+        }
+
+        _operating = true;
+        try
+        {
+            await Sounds.PlayAsync("buttonPress");
+            var purchase = await Api.SelectItemAsync(itemId);
+
+            _insertedHistory.Clear();
+            _balance = 0;
+            _brewing = true;
+            SetStatus("BREWING", sticky: true);
+            await _cupArea.BrewAsync(DrinkClass(item.Id), _reducedMotion);
+
+            await Sounds.PlayAsync("successChime");
+            if (purchase.ChangeTotalCents > 0)
+            {
+                await _changeTray.SpillAsync(purchase.Change, _reducedMotion);
+            }
+
+            SetStatus("ENJOY!", "good", ms: 3200);
+            _brewing = false;
+
+            await Task.WhenAll(_ledger.RefreshAsync(), RefreshStateSilentlyAsync());
+        }
+        catch (ApiException ex)
+        {
+            _brewing = false;
+            await HandleApiExceptionAsync(ex);
+        }
+        catch
+        {
+            _brewing = false;
+            SetStatus("MACHINE ERROR", "warn", blink: true);
+        }
+        finally
+        {
+            _operating = false;
+        }
+    }
+
+    private async Task HandleApiExceptionAsync(ApiException ex)
+    {
+        switch (ex.Code)
+        {
+            case "insufficient-funds":
+                SetStatus("INSERT COIN", "warn", blink: true);
+                break;
+
+            case "out-of-stock":
+                SetStatus("OUT OF STOCK", "warn", blink: true);
+                break;
+
+            case "exact-change-only":
+                await Sounds.PlayAsync("coinCascade", 4);
+                var refund = ex.Refund?.SelectMany(c => Enumerable.Repeat(c.DenominationCents, c.Count)).ToArray()
+                             ?? _insertedHistory.ToArray();
+                _insertedHistory.Clear();
+                _balance = 0;
+                if (refund.Length > 0)
+                {
+                    await _coinReturn.AddManyAsync(refund, _reducedMotion);
+                }
+
+                SetStatus("EXACT CHANGE ONLY", "warn", blink: true, ms: 3200);
+                await RefreshStateSilentlyAsync();
+                break;
+
+            default:
+                SetStatus("TRY AGAIN", "warn");
+                break;
+        }
+    }
+
+    // ---------------------------------------------------------------- cancel & refund
+
+    private async Task CancelAsync()
+    {
+        if (_brewing || _operating)
+        {
+            return;
+        }
+
+        if (_balance <= 0)
+        {
+            SetStatus("INSERT COIN");
+            return;
+        }
+
+        _operating = true;
+        try
+        {
+            await Sounds.PlayAsync("buttonPress");
+            var result = await Api.CancelAsync();
+            _balance = 0;
+            _insertedHistory.Clear();
+
+            if (result.Refund.Count > 0)
+            {
+                var coins = result.Refund.SelectMany(c => Enumerable.Repeat(c.DenominationCents, c.Count)).ToArray();
+                await Sounds.PlayAsync("coinCascade", Math.Min(coins.Length, 8));
+                await _coinReturn.AddManyAsync(coins, _reducedMotion);
+            }
+
+            SetStatus("REFUNDED", ms: 2800);
+            await Task.WhenAll(_ledger.RefreshAsync(), RefreshStateSilentlyAsync());
+        }
+        catch (ApiException ex)
+        {
+            await HandleApiExceptionAsync(ex);
+        }
+        catch
+        {
+            SetStatus("MACHINE ERROR", "warn", blink: true);
+        }
+        finally
+        {
+            _operating = false;
+        }
+    }
+
+    private Task OnChangeTakenAsync() => Sounds.PlayAsync("buttonPress").AsTask();
+
+    private Task OnReturnTakenAsync() => Sounds.PlayAsync("buttonPress").AsTask();
+
+    private async Task HandleRefilledAsync()
+    {
+        await Sounds.PlayAsync("coinClink");
+        await RefreshStateSilentlyAsync();
+    }
+
+    // ---------------------------------------------------------------- keyboard & misc
+
+    /// <summary>Keyboard bridge entry point. JS-invoked methods do not trigger
+    /// an automatic re-render, so the action is followed by an explicit one.</summary>
+    [JSInvokable]
+    public async Task OnKey(string action)
+    {
+        // The service dialog is modal — machine hotkeys are swallowed while open.
+        if (_serviceOpen)
+        {
+            return;
+        }
+
+        try
+        {
+            await (action switch
+            {
+                "coin-5" => InsertCoinAsync(5),
+                "coin-10" => InsertCoinAsync(10),
+                "coin-20" => InsertCoinAsync(20),
+                "coin-50" => InsertCoinAsync(50),
+                "coin-100" => InsertCoinAsync(100),
+                "coin-200" => InsertCoinAsync(200),
+                "select-1" or "select-2" or "select-3" => SelectByIndexAsync(action[^1] - '1'),
+                "cancel" => CancelAsync(),
+                "mute" => ToggleMuteAsync(),
+                _ => Task.CompletedTask,
+            });
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private Task SelectByIndexAsync(int index) =>
+        index >= 0 && index < _menu.Count ? SelectItemAsync(_menu[index].Id) : Task.CompletedTask;
+
+    private async Task ToggleMuteAsync()
+    {
+        await Sounds.ToggleMutedAsync();
+        if (!Sounds.Muted)
+        {
+            await Sounds.PlayAsync("buttonPress");
+        }
+    }
+
+    private static string DrinkClass(string itemId) => itemId switch
+    {
+        "cappuccino" => "liquid-cappuccino",
+        "decaf" => "liquid-decaf",
+        _ => "liquid-latte",
+    };
+
+    private static string Money(int cents) => $"${cents / 100d:0.00}";
+
+    private static bool HasDemoFlag(string uri)
+    {
+        var query = new Uri(uri, UriKind.RelativeOrAbsolute).Query;
+        foreach (var pair in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = pair.IndexOf('=');
+            var key = separator < 0 ? pair : pair[..separator];
+            if (string.Equals(key, "demo", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
