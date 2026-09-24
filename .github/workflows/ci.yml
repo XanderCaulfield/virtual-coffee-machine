@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build
+
+  publish:
+    name: Publish Api (artifact)
+    # Only produce a deployable artifact on pushes to main.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish Api
+        run: dotnet publish src/CoffeeMachine.Api --configuration Release --output publish
+
+      - name: Upload publish artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coffee-machine-api
+          path: publish/
+
+      # ============================================================================
+      # RENDER DEPLOY HOOK (OWNER: A5 / DevOps & Hosting)
+      # ----------------------------------------------------------------------------
+      # TODO(A5): Add the Render Blueprint / deploy hook step here. Render typically
+      # auto-deploys `main` from the Dockerfile (see render.yaml), but if an explicit
+      # hook is preferred, deploy the uploaded artifact (or trigger Render) e.g.:
+      #
+      #   - name: Deploy to Render
+      #     env:
+      #       RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+      #     run: |
+      #       curl -X POST "$RENDER_DEPLOY_HOOK_URL"
+      #
+      # A5: replace/complete this block with the final deploy wiring.
+      # ============================================================================
