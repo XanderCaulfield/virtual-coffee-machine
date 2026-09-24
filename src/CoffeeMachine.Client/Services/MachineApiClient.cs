@@ -119,8 +119,9 @@ public sealed class MachineApiClient
             return;
         }
 
-        // RFC 7807 ProblemDetails. The Api adds an extension "code" with values
-        // such as "insufficient-funds", "out-of-stock" or "exact-change-only".
+        // RFC 7807 ProblemDetails. The Api adds the machine-readable extension
+        // "errorCode" ("insufficient-funds", "out-of-stock", ...); the demo
+        // backend historically used "code", so accept both.
         string? code = null;
         string message = $"The machine reported an error ({response.StatusCode}).";
         List<ChangeCoinDto>? refund = null;
@@ -128,7 +129,11 @@ public sealed class MachineApiClient
         {
             using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
             var root = document.RootElement;
-            if (root.TryGetProperty("code", out var codeElement))
+            if (root.TryGetProperty("errorCode", out var errorCodeElement))
+            {
+                code = errorCodeElement.GetString();
+            }
+            else if (root.TryGetProperty("code", out var codeElement))
             {
                 code = codeElement.GetString();
             }
@@ -161,7 +166,7 @@ public sealed class MachineApiClient
     {
         try
         {
-            var stored = await _js.InvokeAsync<string?>("localStorage.getItem", MachineIdStorageKey).ConfigureAwait(false);
+            var stored = await _js.InvokeAsync<string?>("sessionStorage.getItem", MachineIdStorageKey).ConfigureAwait(false);
             if (!string.IsNullOrWhiteSpace(stored) && Guid.TryParse(stored, out var existing))
             {
                 return existing;

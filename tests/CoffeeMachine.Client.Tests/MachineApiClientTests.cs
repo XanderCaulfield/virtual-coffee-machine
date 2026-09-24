@@ -49,4 +49,45 @@ public sealed class MachineApiClientTests
         Assert.Contains("\"coinCounts\":[5,3]", body);
         Assert.Contains("\"latte\":2", body);
     }
+
+    // -------------------------------------------------- errorCode extension
+
+    [Fact]
+    public async Task ApiException_Code_Is_Parsed_From_ErrorCode_Extension()
+    {
+        var (client, _, _) = Create(_ => Problem(409,
+            """{"title":"Insufficient funds","status":409,"detail":"Not enough credit.","errorCode":"insufficient-funds"}"""));
+
+        var ex = await Assert.ThrowsAsync<ApiException>(() => client.SelectItemAsync("latte"));
+
+        Assert.Equal(HttpStatusCode.Conflict, ex.StatusCode);
+        Assert.Equal("insufficient-funds", ex.Code);
+    }
+
+    [Fact]
+    public async Task ApiException_Code_Falls_Back_To_Legacy_Code_Extension()
+    {
+        // The demo backend historically used "code"; the client must still read it.
+        var (client, _, _) = Create(_ => Problem(409,
+            """{"title":"Out of stock","status":409,"detail":"Sold out.","code":"out-of-stock"}"""));
+
+        var ex = await Assert.ThrowsAsync<ApiException>(() => client.SelectItemAsync("latte"));
+
+        Assert.Equal("out-of-stock", ex.Code);
+    }
+
+    [Fact]
+    public async Task ExactChangeOnly_Refund_Breakdown_Is_Parsed_From_Extension()
+    {
+        var (client, _, _) = Create(_ => Problem(409,
+            """{"title":"Exact change only","status":409,"detail":"Cannot make change.","errorCode":"exact-change-only","refund":[{"denominationCents":200,"count":2},{"denominationCents":50,"count":1}]}"""));
+
+        var ex = await Assert.ThrowsAsync<ApiException>(() => client.SelectItemAsync("latte"));
+
+        Assert.Equal("exact-change-only", ex.Code);
+        Assert.Equal(2, ex.Refund!.Count);
+        Assert.Equal(200, ex.Refund[0].DenominationCents);
+        Assert.Equal(2, ex.Refund[0].Count);
+        Assert.Equal(50, ex.Refund[1].DenominationCents);
+    }
 }
