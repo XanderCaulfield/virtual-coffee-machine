@@ -265,6 +265,10 @@
         _statusTone = tone;
         _statusBlink = blink;
         _statusKey++;
+        // Status changes are often made mid-handler (e.g. "BREWING" before a
+        // multi-second animation await); without an explicit render the LED
+        // would keep showing the previous message until the handler returns.
+        StateHasChanged();
         if (!sticky)
         {
             var cts = new CancellationTokenSource();
