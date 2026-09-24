@@ -29,8 +29,9 @@ public sealed class ApiException : Exception
 /// <summary>
 /// Typed client for the Coffee Machine REST API. All endpoints live under
 /// <c>/api/v1</c> on the same origin as the app, and every request is tagged
-/// with the per-visitor machine id (a GUID persisted in localStorage so a
-/// refresh keeps the same machine, balance and ledger).
+/// with the per-visitor machine id (a GUID persisted in sessionStorage so a
+/// refresh keeps the same machine and balance, while a second tab gets its
+/// own independent machine).
 /// </summary>
 public sealed class MachineApiClient
 {
@@ -79,9 +80,9 @@ public sealed class MachineApiClient
     public Task RefillAsync(int[] coinDenominations, int[] coinCounts, Dictionary<string, int>? items = null, CancellationToken ct = default) =>
         SendForMachineAsync(async (id, c) =>
         {
-            // Refill is an admin-wide endpoint: the machine id travels in the body for auditability.
-            _ = id;
-            using var response = await _http.PostAsJsonAsync("admin/refill", new RefillRequest(coinDenominations, coinCounts, items), c).ConfigureAwait(false);
+            // The refill endpoint scopes the restock to one machine via the
+            // machineId query parameter.
+            using var response = await _http.PostAsJsonAsync($"admin/refill?machineId={id}", new RefillRequest(coinDenominations, coinCounts, items), JsonOptions, c).ConfigureAwait(false);
             await EnsureSuccessAsync(response, c).ConfigureAwait(false);
             return true;
         }, ct);
@@ -119,8 +120,9 @@ public sealed class MachineApiClient
             return;
         }
 
-        // RFC 7807 ProblemDetails. The Api adds an extension "code" with values
-        // such as "insufficient-funds", "out-of-stock" or "exact-change-only".
+        // RFC 7807 ProblemDetails. The Api adds the machine-readable extension
+        // "errorCode" ("insufficient-funds", "out-of-stock", ...); the demo
+        // backend historically used "code", so accept both.
         string? code = null;
         string message = $"The machine reported an error ({response.StatusCode}).";
         List<ChangeCoinDto>? refund = null;
@@ -128,7 +130,11 @@ public sealed class MachineApiClient
         {
             using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
             var root = document.RootElement;
-            if (root.TryGetProperty("code", out var codeElement))
+            if (root.TryGetProperty("errorCode", out var errorCodeElement))
+            {
+                code = errorCodeElement.GetString();
+            }
+            else if (root.TryGetProperty("code", out var codeElement))
             {
                 code = codeElement.GetString();
             }
@@ -161,7 +167,7 @@ public sealed class MachineApiClient
     {
         try
         {
-            var stored = await _js.InvokeAsync<string?>("localStorage.getItem", MachineIdStorageKey).ConfigureAwait(false);
+            var stored = await _js.InvokeAsync<string?>("sessionStorage.getItem", MachineIdStorageKey).ConfigureAwait(false);
             if (!string.IsNullOrWhiteSpace(stored) && Guid.TryParse(stored, out var existing))
             {
                 return existing;
@@ -169,13 +175,13 @@ public sealed class MachineApiClient
         }
         catch (JSException)
         {
-            // localStorage unavailable (private mode?) — fall through and use an in-memory id.
+            // Storage unavailable (private mode?) — fall through and use an in-memory id.
         }
 
         var fresh = Guid.NewGuid();
         try
         {
-            await _js.InvokeVoidAsync("localStorage.setItem", MachineIdStorageKey, fresh.ToString()).ConfigureAwait(false);
+            await _js.InvokeVoidAsync("sessionStorage.setItem", MachineIdStorageKey, fresh.ToString()).ConfigureAwait(false);
         }
         catch (JSException)
         {

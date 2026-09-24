@@ -482,3 +482,10 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# SQLite runtime database files — the API creates coffeemachine.db next to
+# the entry point when DB_PATH is not set (see src/CoffeeMachine.Api/Program.cs).
+*.db
+*.db-shm
+*.db-wal
+*.db-journal

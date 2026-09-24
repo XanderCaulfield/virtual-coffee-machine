@@ -47,6 +47,15 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/healthz", () => Results.Text("OK"));
 
+// Unknown /api routes must answer 404 ProblemDetails rather than fall
+// through to the SPA shell below, which would reply 200 with HTML and
+// silently mask API typos.
+app.Map("/api/{**path}", (HttpContext context) =>
+    Results.Problem(
+        statusCode: StatusCodes.Status404NotFound,
+        title: "Not found",
+        detail: $"No endpoint matches '{context.Request.Path}'."));
+
 // --- Blazor WebAssembly client hosting ---
 // Serve the compiled client (wwwroot/_framework) and its static assets,
 // then fall back to index.html for any non-API route so client-side

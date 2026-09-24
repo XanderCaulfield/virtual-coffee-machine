@@ -469,6 +469,28 @@ public sealed class CoffeeMachineApiTests : IClassFixture<CoffeeMachineApiFactor
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    // ------------------------------------------------------------- unknown routes
+
+    [Fact]
+    public async Task Unknown_Api_Route_Returns_404_ProblemDetails_Not_The_Spa_Shell()
+    {
+        var response = await _client.GetAsync("/api/v1/does-not-exist");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(404, problem.RootElement.GetProperty("status").GetInt32());
+        Assert.Equal("Not found", problem.RootElement.GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public async Task Unknown_Api_Route_With_Post_Also_Returns_404_ProblemDetails()
+    {
+        var response = await _client.PostAsync("/api/v1/does-not-exist/coins", content: null);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
     // ----------------------------------------------------------------- helpers
 
     private static string NewMachineId() => $"test-{Guid.NewGuid():N}";
