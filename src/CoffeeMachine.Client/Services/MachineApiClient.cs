@@ -79,9 +79,9 @@ public sealed class MachineApiClient
     public Task RefillAsync(int[] coinDenominations, int[] coinCounts, Dictionary<string, int>? items = null, CancellationToken ct = default) =>
         SendForMachineAsync(async (id, c) =>
         {
-            // Refill is an admin-wide endpoint: the machine id travels in the body for auditability.
-            _ = id;
-            using var response = await _http.PostAsJsonAsync("admin/refill", new RefillRequest(coinDenominations, coinCounts, items), c).ConfigureAwait(false);
+            // The refill endpoint scopes the restock to one machine via the
+            // machineId query parameter.
+            using var response = await _http.PostAsJsonAsync($"admin/refill?machineId={id}", new RefillRequest(coinDenominations, coinCounts, items), JsonOptions, c).ConfigureAwait(false);
             await EnsureSuccessAsync(response, c).ConfigureAwait(false);
             return true;
         }, ct);
