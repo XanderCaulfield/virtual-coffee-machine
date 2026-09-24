@@ -33,11 +33,12 @@ builder.Services.AddSingleton<MachineRegistry>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Swagger is deliberately enabled in every environment, including
+// Production: the hosted demo is meant to be explored, and interviewers
+// should be able to browse the live REST API at /swagger without cloning
+// and running the app locally.
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseExceptionHandler();
 app.UseHttpsRedirection();

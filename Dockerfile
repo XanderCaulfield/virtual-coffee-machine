@@ -28,9 +28,15 @@ RUN apt-get update \
 
 COPY --from=build /app/publish .
 
+# The container runs as the non-root `app` user, which cannot write to
+# /app. Give it a writable data dir and point the SQLite database at it,
+# so the app starts cleanly without any operator-provided DB_PATH.
+RUN mkdir -p /data && chown app:app /data
+
 # Run as the non-root `app` user built into the .NET 8 images.
 USER app
 
+ENV DB_PATH=/data/coffeemachine.db
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 
