@@ -28,10 +28,8 @@ have to click through the service form.
    then **Apply** (a.k.a. *Create Resources*).
 5. Wait for the first build (~5–10 min: NuGet restore + Release publish of the
    Blazor WASM bundle). Follow along under the service's **Events/Logs** tab.
-6. Grab the live URL from the top of the service page — expect
-   **`https://virtual-coffee-machine.onrender.com`** (if that slug is already
-   taken, Render appends a suffix like `-abcd`; whatever the dashboard shows
-   is the real URL) and smoke-test it:
+6. Grab the live URL from the top of the service page — for this repo it is
+   **`https://virtual-coffee-machine.onrender.com`** — and smoke-test it:
 
    ```bash
    curl -i https://<your-app>.onrender.com/healthz   # expect HTTP/2 200

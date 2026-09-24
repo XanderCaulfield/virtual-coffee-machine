@@ -11,9 +11,8 @@ one of three coffees, and take your change, broken into coinage.
 
 ## Live demo
 
-**https://virtual-coffee-machine.onrender.com** — the expected service URL
-(the final `.onrender.com` slug may differ after the Render deploy; see
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)).
+**https://virtual-coffee-machine.onrender.com** — deployed via the one-click
+[render.yaml](render.yaml) Blueprint; see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 > The free tier sleeps after ~15 minutes of idle traffic. The next request
 > cold-starts it, so the first paint can take **~1 minute**. Here is the whole
@@ -111,7 +110,7 @@ virtual-coffee-machine/
 │   ├── CoffeeMachine.Domain.Tests/     # exhaustive change proof, state machine, …
 │   ├── CoffeeMachine.Api.Tests/        # WebApplicationFactory + in-memory SQLite
 │   └── CoffeeMachine.Client.Tests/     # API client unit tests
-├── docs/                               # DEPLOYMENT.md, COVER_EMAIL.md, images/
+├── docs/                               # DEPLOYMENT.md, BUILD_PLAN.md, images/
 ├── Dockerfile                          # multi-stage, non-root, HEALTHCHECK /healthz
 ├── render.yaml                         # Render Blueprint (one-click deploy)
 └── .github/workflows/ci.yml            # build + test on PR, publish on main
@@ -208,6 +207,40 @@ dotnet test        # all 988 tests (domain + API integration + client)
 | **API** (26) | Integration tests via `WebApplicationFactory` + in-memory SQLite: every endpoint, every success shape, and every error path — 400s, all four 409 `errorCode` values, 404 for unknown routes, persistence across requests |
 | **Client** (6) | The `MachineApiClient` against a stub `HttpHandler` |
 | **Browser pass** | Manual/CDP checks: mobile width, two tabs staying independent, refresh mid-brew restoring state, `prefers-reduced-motion`, keyboard shortcuts, a11y audit |
+
+## Built with AI
+
+Human-designed and reviewed, built at speed with AI — the working style this
+role is about. The build was orchestrated by an agent (OpenCode, running
+**DeepSeek V4 Pro**) that wrote the plan, split the work across eight
+specialised sub-agents, and reviewed every phase before merging it:
+
+| Agent | Owned |
+|---|---|
+| A0 Scaffold | Solution, projects, CI workflow, Dockerfile |
+| A1 Domain | Coins, greedy change, state machine, inventory, ledger |
+| A2 API | REST endpoints, EF Core + SQLite, ProblemDetails |
+| A3 Frontend | Blazor WASM machine — visuals, animations, sounds, keyboard |
+| A4 QA | Adversarial pass — 32 browser checks; found & fixed 7 real bugs |
+| A5 DevOps | Render Blueprint, deploy hook, container verification |
+| A6 Docs | README, ADRs, demo GIF |
+
+Each agent had exclusive file ownership and acceptance criteria, worked in an
+isolated git worktree, and landed its work as a conventional-commit branch that
+was reviewed before merging. Boilerplate was delegated; the consequential
+decisions — greedy change and its proof, the exact-change stock model, per-tab
+machines, the REST contract — were made up front and are documented in the
+ADRs. The full orchestration plan every agent worked from is archived at
+[docs/BUILD_PLAN.md](docs/BUILD_PLAN.md).
+
+| Metric | Value |
+|---|---|
+| Build time | ~2 hours of agent work, plan-to-live in one day; ~30 min of human time |
+| Agents | 1 orchestrator + 8 sub-agent sessions |
+| Model | DeepSeek V4 Pro (via OpenCode) |
+| Token usage | ≈5M input + ≈0.5M output (estimated) |
+| Cost | a few dollars |
+| Output | 25 commits, 7 feature branches, ~8,900 lines, 988 tests, 0 warnings |
 
 ## Decisions & deployment
 
