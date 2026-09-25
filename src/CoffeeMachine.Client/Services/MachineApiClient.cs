@@ -14,15 +14,11 @@ public sealed class ApiException : Exception
     public HttpStatusCode StatusCode { get; }
     public string? Code { get; }
 
-    /// <summary>Refund breakdown when the Api includes one (e.g. exact-change-only), null otherwise.</summary>
-    public IReadOnlyList<ChangeCoinDto>? Refund { get; }
-
-    public ApiException(HttpStatusCode statusCode, string? code, string message, IReadOnlyList<ChangeCoinDto>? refund = null)
+    public ApiException(HttpStatusCode statusCode, string? code, string message)
         : base(message)
     {
         StatusCode = statusCode;
         Code = code;
-        Refund = refund;
     }
 }
 
@@ -121,11 +117,9 @@ public sealed class MachineApiClient
         }
 
         // RFC 7807 ProblemDetails. The Api adds the machine-readable extension
-        // "errorCode" ("insufficient-funds", "out-of-stock", ...); the demo
-        // backend historically used "code", so accept both.
+        // "errorCode" ("insufficient-funds", "out-of-stock", ...).
         string? code = null;
         string message = $"The machine reported an error ({response.StatusCode}).";
-        List<ChangeCoinDto>? refund = null;
         try
         {
             using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
@@ -133,10 +127,6 @@ public sealed class MachineApiClient
             if (root.TryGetProperty("errorCode", out var errorCodeElement))
             {
                 code = errorCodeElement.GetString();
-            }
-            else if (root.TryGetProperty("code", out var codeElement))
-            {
-                code = codeElement.GetString();
             }
 
             if (root.TryGetProperty("detail", out var detailElement) && detailElement.ValueKind == JsonValueKind.String)
@@ -147,20 +137,13 @@ public sealed class MachineApiClient
             {
                 message = titleElement.GetString() ?? message;
             }
-
-            // Optional extension (the demo backend and the Api may include the
-            // coins refunded to the customer, e.g. on exact-change-only).
-            if (root.TryGetProperty("refund", out var refundElement) && refundElement.ValueKind == JsonValueKind.Array)
-            {
-                refund = refundElement.Deserialize<List<ChangeCoinDto>>(JsonOptions);
-            }
         }
         catch (JsonException)
         {
             // Fall back to the generic message — the status code alone is still useful.
         }
 
-        throw new ApiException(response.StatusCode, code, message, refund);
+        throw new ApiException(response.StatusCode, code, message);
     }
 
     private async Task<Guid> LoadOrCreateMachineIdAsync()

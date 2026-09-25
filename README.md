@@ -143,15 +143,7 @@ cd virtual-coffee-machine
 # Full app — API + hosted Blazor client (single process)
 dotnet run --project src/CoffeeMachine.Api
 # → http://localhost:5198   (Swagger UI at /swagger, health at /healthz)
-
-# UI-only development — the client on its own, with an in-process fake backend
-dotnet run --project src/CoffeeMachine.Client
-# → http://localhost:5199/?demo=1
 ```
-
-The `?demo=1` flag switches the client to a fake backend that speaks the same
-`/api/v1` contracts, so the UI runs standalone; without the flag it talks to the
-real API on the same origin.
 
 ### Run it with Docker
 

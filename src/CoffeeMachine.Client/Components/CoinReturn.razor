@@ -44,9 +44,6 @@
     [Parameter]
     public EventCallback OnTake { get; set; }
 
-    /// <summary>Total value currently sitting in the tray (cents).</summary>
-    public int ValueCents { get; private set; }
-
     /// <summary>Adds one coin with a bounce-in animation.</summary>
     public async Task AddAsync(int denominationCents, bool reducedMotion)
     {
@@ -77,8 +74,6 @@
         {
             _overflow++;
         }
-
-        ValueCents += denominationCents;
     }
 
     /// <summary>Empties the tray.</summary>
@@ -91,7 +86,6 @@
 
         _coins.Clear();
         _overflow = 0;
-        ValueCents = 0;
         StateHasChanged();
         await OnTake.InvokeAsync();
     }

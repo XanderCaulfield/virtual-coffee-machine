@@ -30,11 +30,6 @@ public sealed class SoundService
         _muted = await _js.InvokeAsync<bool>("coffeeSounds.toggleMuted").ConfigureAwait(false);
     }
 
-    public async ValueTask SetMutedAsync(bool muted)
-    {
-        _muted = await _js.InvokeAsync<bool>("coffeeSounds.setMuted", muted).ConfigureAwait(false);
-    }
-
     /// <summary>Plays a named effect unless muted. Never throws (sound is non-critical).</summary>
     public async ValueTask PlayAsync(string name, double? arg = null)
     {
