@@ -243,7 +243,7 @@ ADRs. The full orchestration plan every agent worked from is archived at
 | Agents | 1 orchestrator + 8 sub-agent sessions |
 | Model | DeepSeek V4 Pro (via OpenCode) |
 | Cost | $4.57 |
-| Output | 37 commits, 8 feature branches, ~9,100 lines, 1039 tests, 0 warnings |
+| Output | 39 commits, 8 feature branches, ~9,100 lines, 1039 tests, 0 warnings |
 
 ## Decisions & deployment
 
