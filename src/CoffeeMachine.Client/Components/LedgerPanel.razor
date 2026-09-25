@@ -71,6 +71,15 @@
     private Dictionary<string, string> _itemNames = [];
     private bool _namesLoaded;
 
+    /// <summary>
+    /// Fetches once on load so the collapsed count badge is correct after a
+    /// refresh (previously it stayed at 0 until the panel was first expanded).
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+    }
+
     /// <summary>Re-fetches the ledger (called by the machine after each transaction).</summary>
     public async Task RefreshAsync()
     {
