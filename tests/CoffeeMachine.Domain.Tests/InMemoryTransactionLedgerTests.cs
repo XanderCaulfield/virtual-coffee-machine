@@ -73,6 +73,29 @@ public class InMemoryTransactionLedgerTests
     }
 
     [Fact]
+    public void List_without_a_machine_id_returns_every_machine()
+    {
+        var ledger = new InMemoryTransactionLedger();
+        ledger.Append(TransactionFor("machine-a"));
+        ledger.Append(TransactionFor("machine-b"));
+
+        var rows = ledger.List(null, 100).ToList();
+
+        Assert.Equal(2, rows.Count);
+        Assert.Contains(rows, row => row.MachineId == "machine-a");
+        Assert.Contains(rows, row => row.MachineId == "machine-b");
+    }
+
+    [Fact]
+    public void List_with_a_blank_machine_id_behaves_like_no_filter()
+    {
+        var ledger = new InMemoryTransactionLedger();
+        ledger.Append(TransactionFor("machine-a"));
+
+        Assert.Single(ledger.List("  ", 100));
+    }
+
+    [Fact]
     public void Append_is_thread_safe()
     {
         var ledger = new InMemoryTransactionLedger();

@@ -62,10 +62,8 @@ public sealed class EfTransactionLedger : ITransactionLedger
     }
 
     /// <inheritdoc />
-    public IEnumerable<Transaction> List(string machineId, int limit)
+    public IEnumerable<Transaction> List(string? machineId, int limit)
     {
-        ArgumentNullException.ThrowIfNull(machineId);
-
         if (limit <= 0)
         {
             return Array.Empty<Transaction>();
@@ -73,9 +71,13 @@ public sealed class EfTransactionLedger : ITransactionLedger
 
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        return db.Transactions
-            .AsNoTracking()
-            .Where(t => t.MachineId == machineId)
+        var query = db.Transactions.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(machineId))
+        {
+            query = query.Where(t => t.MachineId == machineId);
+        }
+
+        return query
             .OrderByDescending(t => t.Timestamp)
             .Take(limit)
             .ToList()

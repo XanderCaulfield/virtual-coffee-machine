@@ -21,10 +21,8 @@ public sealed class InMemoryTransactionLedger : ITransactionLedger
     }
 
     /// <inheritdoc />
-    public IEnumerable<Transaction> List(string machineId, int limit)
+    public IEnumerable<Transaction> List(string? machineId, int limit)
     {
-        ArgumentNullException.ThrowIfNull(machineId);
-
         if (limit <= 0)
         {
             return Array.Empty<Transaction>();
@@ -32,13 +30,16 @@ public sealed class InMemoryTransactionLedger : ITransactionLedger
 
         lock (_gate)
         {
+            var filtered = string.IsNullOrWhiteSpace(machineId)
+                ? _transactions
+                : _transactions.Where(transaction => transaction.MachineId == machineId);
+
             // The index tie-break keeps the "newest first" guarantee strict
             // even when consecutive rows share the same timestamp (the
             // clock resolution on some platforms is coarser than the time
             // between two quick transactions).
-            return _transactions
+            return filtered
                 .Select((transaction, index) => (transaction, index))
-                .Where(entry => entry.transaction.MachineId == machineId)
                 .OrderByDescending(entry => entry.transaction.Timestamp)
                 .ThenByDescending(entry => entry.index)
                 .Select(entry => entry.transaction)
