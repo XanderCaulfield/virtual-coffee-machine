@@ -9,6 +9,17 @@ one of three coffees, and take your change, broken into coinage.
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Live demo](https://img.shields.io/badge/live_demo-onrender.com-46e3b7)](https://virtual-coffee-machine.onrender.com)
 
+## Tech stack at a glance
+
+| Area | Choice |
+|---|---|
+| Language & runtime | C# 12 on .NET 8 LTS |
+| Web API | ASP.NET Core (controller-based), REST + JSON, RFC 7807 errors, Swagger/OpenAPI |
+| Frontend | Blazor WebAssembly (hosted), Razor components, hand-built SVG/CSS animation, WebAudio sounds |
+| Data | EF Core 8 + SQLite (documented MySQL swap) |
+| Testing | xUnit, `WebApplicationFactory` integration tests, headless-browser pass |
+| Build & deploy | GitHub Actions CI, multi-stage non-root Docker, Render Blueprint |
+
 ## Live demo
 
 **https://virtual-coffee-machine.onrender.com** — deployed via the one-click
@@ -238,7 +249,7 @@ ADRs. The full orchestration plan every agent worked from is archived at
 | Build time | ~2 hours of agent work, plan-to-live in one day; ~30 min of human time |
 | Agents | 1 orchestrator + 8 sub-agent sessions |
 | Model | DeepSeek V4 Pro (via OpenCode) |
-| Cost | a few dollars |
+| Cost | $4.57 |
 | Output | 25 commits, 7 feature branches, ~8,900 lines, 988 tests, 0 warnings |
 
 ## Decisions & deployment
