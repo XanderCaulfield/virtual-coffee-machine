@@ -238,7 +238,6 @@ ADRs. The full orchestration plan every agent worked from is archived at
 | Build time | ~2 hours of agent work, plan-to-live in one day; ~30 min of human time |
 | Agents | 1 orchestrator + 8 sub-agent sessions |
 | Model | DeepSeek V4 Pro (via OpenCode) |
-| Token usage | ≈5M input + ≈0.5M output (estimated) |
 | Cost | a few dollars |
 | Output | 25 commits, 7 feature branches, ~8,900 lines, 988 tests, 0 warnings |
 
