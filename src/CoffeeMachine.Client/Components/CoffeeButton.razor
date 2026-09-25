@@ -10,7 +10,7 @@
         @for (var i = 0; i < Items.Count; i++)
         {
             var item = Items[i];
-            var affordable = item.InStock && BalanceCents >= item.PriceCents;
+            var affordable = MenuUi.CanAfford(item, BalanceCents);
             <button type="button"
                     class="coffee-btn @(affordable ? "lit" : null) @(!item.InStock ? "out" : null)"
                     aria-label="Select @item.Name, @item.PriceDisplay"

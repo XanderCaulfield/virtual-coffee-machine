@@ -16,4 +16,8 @@
     <ProjectReference Include="..\CoffeeMachine.Domain\CoffeeMachine.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="CoffeeMachine.Client.Tests" />
+  </ItemGroup>
+
 </Project>

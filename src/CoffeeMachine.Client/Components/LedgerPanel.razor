@@ -24,6 +24,10 @@
             {
                 <p class="ledger-empty">Loading transactions…</p>
             }
+            else if (_failed)
+            {
+                <p class="ledger-empty" role="alert">Couldn't load transactions — the machine may be offline.</p>
+            }
             else if (Rows.Count == 0)
             {
                 <p class="ledger-empty">No purchases yet — the machine awaits its first customer.</p>
@@ -67,6 +71,7 @@
 
     private bool _open;
     private bool _loading;
+    private bool _failed;
     private IReadOnlyList<TransactionDto> Rows { get; set; } = [];
     private Dictionary<string, string> _itemNames = [];
     private bool _namesLoaded;
@@ -84,6 +89,7 @@
     public async Task RefreshAsync()
     {
         _loading = true;
+        _failed = false;
         try
         {
             if (!_namesLoaded)
@@ -96,6 +102,9 @@
         catch
         {
             // The ledger is auxiliary — never take the machine down for it.
+            // Keep the last good rows and flag the fetch as failed so the
+            // panel says so instead of pretending there are no transactions.
+            _failed = true;
         }
         finally
         {

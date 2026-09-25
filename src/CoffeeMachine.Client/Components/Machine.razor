@@ -305,7 +305,7 @@
         }
         else
         {
-            _statusText = _balance > 0 && _menu.Any(m => m.InStock && _balance >= m.PriceCents)
+            _statusText = _balance > 0 && MenuUi.CanAffordAny(_menu, _balance)
                 ? "SELECT DRINK"
                 : "INSERT COIN";
             _statusTone = "info";
@@ -334,7 +334,7 @@
             {
                 _balance = result.BalanceCents;
                 await Sounds.PlayAsync("coinInsert");
-                SetStatus(_menu.Any(m => m.InStock && _balance >= m.PriceCents) ? "SELECT DRINK" : "INSERT COIN");
+                SetStatus(MenuUi.CanAffordAny(_menu, _balance) ? "SELECT DRINK" : "INSERT COIN");
             }
             else
             {
