@@ -173,7 +173,10 @@ public sealed class MachineRegistry
 
     /// <summary>
     /// Hydrates a machine from its SQLite row, or builds a fresh one with the
-    /// default stock and persists it immediately.
+    /// default stock and persists it immediately. A row whose stock JSON is
+    /// corrupt is treated as untrusted: the persisted balance is kept but the
+    /// stock is reseeded to the factory defaults, so the machine hydrates
+    /// usable instead of failing every request with a 500.
     /// </summary>
     private MachineEntry CreateEntry(string id)
     {
@@ -184,33 +187,51 @@ public sealed class MachineRegistry
         VendingMachine machine;
         if (entity is null)
         {
-            var inventory = new Inventory();
-            foreach (var denomination in Denominations.Accepted)
-            {
-                inventory.AddCoin(denomination, DefaultCoinStock);
-            }
-
-            foreach (var item in CoffeeMenu.All)
-            {
-                inventory.AddItem(item.Id, DefaultItemStock);
-            }
-
-            machine = new VendingMachine(id, inventory, _ledger);
+            machine = new VendingMachine(id, SeedDefaultInventory(), _ledger);
             Persist(db, machine);
             db.SaveChanges();
         }
         else
         {
-            machine = VendingMachine.Restore(
-                id,
-                StockJson.DeserializeState(entity.State),
-                entity.BalanceCents,
-                StockJson.DeserializeCoins(entity.CoinStockJson),
-                StockJson.DeserializeItems(entity.ItemStockJson),
-                _ledger);
+            var state = StockJson.DeserializeState(entity.State);
+            var coinStockOk = StockJson.TryDeserializeCoins(entity.CoinStockJson, out var coins);
+            var itemStockOk = StockJson.TryDeserializeItems(entity.ItemStockJson, out var items);
+
+            machine = coinStockOk && itemStockOk
+                ? VendingMachine.Restore(id, state, entity.BalanceCents, coins, items, _ledger)
+                : RestoreWithDefaultStock(id, state, entity.BalanceCents);
         }
 
         return new MachineEntry(machine);
+    }
+
+    /// <summary>
+    /// Builds a machine from a row whose stock JSON cannot be trusted: keep
+    /// the persisted state and balance, but reseed the factory-default stock
+    /// so the machine stays operable (the admin can restock via the service
+    /// panel).
+    /// </summary>
+    private VendingMachine RestoreWithDefaultStock(string id, MachineState state, int balanceCents)
+    {
+        var seed = SeedDefaultInventory();
+        return VendingMachine.Restore(id, state, balanceCents, seed.CoinStock, seed.ItemStock, _ledger);
+    }
+
+    /// <summary>Builds the factory-default inventory: 20 of every accepted denomination and 10 of every drink.</summary>
+    private static Inventory SeedDefaultInventory()
+    {
+        var inventory = new Inventory();
+        foreach (var denomination in Denominations.Accepted)
+        {
+            inventory.AddCoin(denomination, DefaultCoinStock);
+        }
+
+        foreach (var item in CoffeeMenu.All)
+        {
+            inventory.AddItem(item.Id, DefaultItemStock);
+        }
+
+        return inventory;
     }
 
     /// <summary>Writes the machine's current state into its SQLite row.</summary>

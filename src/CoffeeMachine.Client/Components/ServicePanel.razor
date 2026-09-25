@@ -86,7 +86,7 @@
 }
 
 @code {
-    private static readonly int[] CoinDenominations = [5, 10, 20, 50, 100, 200];
+    private static readonly int[] CoinDenominations = Denominations.Accepted.Select(d => d.ValueCents()).ToArray();
 
     private readonly Dictionary<int, int> _coinAdditions = [];
     private readonly Dictionary<string, int> _itemAdditions = [];
@@ -133,7 +133,7 @@
     }
 
     private static string LabelFor(int denominationCents) =>
-        denominationCents >= 100 ? $"${denominationCents / 100}" : $"{denominationCents}¢";
+        Denominations.FromCents(denominationCents).DisplayName();
 
     private int CurrentCoins(int denominationCents) =>
         Inventory?.Coins.GetValueOrDefault(denominationCents) ?? 0;

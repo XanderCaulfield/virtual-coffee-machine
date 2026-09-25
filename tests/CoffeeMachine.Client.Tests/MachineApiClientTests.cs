@@ -5,8 +5,8 @@ using CoffeeMachine.Client.Services;
 namespace CoffeeMachine.Client.Tests;
 
 /// <summary>
-/// Regression tests for the API client wiring, covering the bugs found when
-/// exercising the real (non-demo) backend.
+/// Unit tests for the API client wiring (request shapes, error parsing and
+/// the per-tab machine id store).
 /// </summary>
 public sealed class MachineApiClientTests
 {
@@ -65,30 +65,29 @@ public sealed class MachineApiClientTests
     }
 
     [Fact]
-    public async Task ApiException_Code_Falls_Back_To_Legacy_Code_Extension()
+    public async Task ApiException_Uses_Detail_As_Message_When_ErrorCode_Is_Absent()
     {
-        // The demo backend historically used "code"; the client must still read it.
         var (client, _, _) = Create(_ => Problem(409,
-            """{"title":"Out of stock","status":409,"detail":"Sold out.","code":"out-of-stock"}"""));
+            """{"title":"Out of stock","status":409,"detail":"Sold out."}"""));
 
         var ex = await Assert.ThrowsAsync<ApiException>(() => client.SelectItemAsync("latte"));
 
-        Assert.Equal("out-of-stock", ex.Code);
+        Assert.Null(ex.Code);
+        Assert.Equal("Sold out.", ex.Message);
     }
 
     [Fact]
-    public async Task ExactChangeOnly_Refund_Breakdown_Is_Parsed_From_Extension()
+    public async Task ApiException_Tolerates_Non_Json_Error_Bodies()
     {
-        var (client, _, _) = Create(_ => Problem(409,
-            """{"title":"Exact change only","status":409,"detail":"Cannot make change.","errorCode":"exact-change-only","refund":[{"denominationCents":200,"count":2},{"denominationCents":50,"count":1}]}"""));
+        // A misbehaving proxy or gateway may answer with plain text; the
+        // client must fall back to a generic message rather than throw.
+        var (client, _, _) = Create(_ => Problem(502, "<html>Bad Gateway</html>"));
 
-        var ex = await Assert.ThrowsAsync<ApiException>(() => client.SelectItemAsync("latte"));
+        var ex = await Assert.ThrowsAsync<ApiException>(() => client.GetMenuAsync());
 
-        Assert.Equal("exact-change-only", ex.Code);
-        Assert.Equal(2, ex.Refund!.Count);
-        Assert.Equal(200, ex.Refund[0].DenominationCents);
-        Assert.Equal(2, ex.Refund[0].Count);
-        Assert.Equal(50, ex.Refund[1].DenominationCents);
+        Assert.Equal(HttpStatusCode.BadGateway, ex.StatusCode);
+        Assert.Null(ex.Code);
+        Assert.StartsWith("The machine reported an error", ex.Message, StringComparison.Ordinal);
     }
 
     // --------------------------------------------------------- machine id store

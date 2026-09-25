@@ -31,20 +31,6 @@ public class CoffeeMenuTests
         Assert.Equal("$4.00", CoffeeMenu.Decaf.PriceDisplay);
     }
 
-    [Theory]
-    [InlineData(0, "$0.00")]
-    [InlineData(5, "$0.05")]
-    [InlineData(50, "$0.50")]
-    [InlineData(100, "$1.00")]
-    [InlineData(350, "$3.50")]
-    [InlineData(4095, "$40.95")]
-    [InlineData(-50, "-$0.50")]
-    [InlineData(-305, "-$3.05")]
-    public void FormatPrice_formats_cent_amounts_as_dollar_strings(int cents, string expected)
-    {
-        Assert.Equal(expected, CoffeeMenu.FormatPrice(cents));
-    }
-
     [Fact]
     public void Find_looks_items_up_by_id_case_insensitively()
     {

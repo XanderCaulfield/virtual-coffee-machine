@@ -360,6 +360,49 @@ public sealed class CoffeeMachineApiTests : IClassFixture<CoffeeMachineApiFactor
         Assert.Equal("cappuccino", newest.ItemId);
     }
 
+    [Fact]
+    public async Task Transactions_Limit_Is_Clamped_Between_One_And_One_Hundred()
+    {
+        var id = NewMachineId();
+        await InsertCoinAndAssertAcceptedAsync(id, 100);
+        await InsertCoinAndAssertAcceptedAsync(id, 100);
+        await InsertCoinAndAssertAcceptedAsync(id, 100);
+        await SelectAndAssertOkAsync(id, "latte");
+        await Task.Delay(25);
+        await InsertCoinAndAssertAcceptedAsync(id, 200);
+        await InsertCoinAndAssertAcceptedAsync(id, 200);
+        await SelectAndAssertOkAsync(id, "cappuccino");
+
+        // limit=0 is clamped up to 1: only the newest row comes back.
+        var clampedDown = await GetTransactionsAsync(id, 0);
+        var newest = Assert.Single(clampedDown);
+        Assert.Equal("cappuccino", newest.ItemId);
+
+        // limit=1000 is clamped down to 100: both rows come back.
+        var clampedUp = await GetTransactionsAsync(id, 1000);
+        Assert.Equal(2, clampedUp.Count);
+    }
+
+    [Fact]
+    public async Task Selecting_After_A_Completed_Purchase_Fails_Cleanly_With_409()
+    {
+        var id = NewMachineId();
+        await InsertCoinAndAssertAcceptedAsync(id, 100);
+        await InsertCoinAndAssertAcceptedAsync(id, 100);
+        await InsertCoinAndAssertAcceptedAsync(id, 100);
+        await SelectAndAssertOkAsync(id, "latte");
+
+        // A duplicate/racing click lands after the purchase zeroed the
+        // balance: it must answer a clean 409, not corrupt state or 500.
+        var response = await SelectAsync(id, "latte");
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("insufficient-funds", await GetErrorCodeAsync(response));
+
+        var state = await GetStateAsync(id);
+        Assert.Equal(0, state.BalanceCents);
+        Assert.Equal("Idle", state.State);
+    }
+
     // ------------------------------------------------------------- persistence
 
     [Fact]
@@ -399,6 +442,64 @@ public sealed class CoffeeMachineApiTests : IClassFixture<CoffeeMachineApiFactor
         Assert.Equal(10, state.Inventory.Items["cappuccino"]);
         Assert.Equal(10, state.Inventory.Items["latte"]);
         Assert.Equal(10, state.Inventory.Items["decaf"]);
+    }
+
+    [Fact]
+    public async Task Machine_With_Corrupt_Stock_Json_Hydrates_With_Reseeded_Defaults_Instead_Of_500()
+    {
+        var id = NewMachineId();
+
+        // A hand-edited row whose coin stock column is not valid JSON. The
+        // balance column is a plain integer and stays trusted; the stock is
+        // reseeded to the factory defaults so the machine stays usable.
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Machines.Add(new MachineEntity
+            {
+                Id = id,
+                State = "AwaitingSelection",
+                BalanceCents = 150,
+                CoinStockJson = "{not valid json",
+                ItemStockJson = "{\"latte\":10}",
+                UpdatedAt = DateTimeOffset.UtcNow,
+            });
+            db.SaveChanges();
+        }
+
+        var state = await GetStateAsync(id);
+        Assert.Equal(150, state.BalanceCents);
+        Assert.Equal("AwaitingSelection", state.State);
+        Assert.Equal(20, state.Inventory.Coins[5]);
+        Assert.Equal(20, state.Inventory.Coins[200]);
+        Assert.Equal(10, state.Inventory.Items["latte"]);
+    }
+
+    [Fact]
+    public async Task Machine_With_Corrupt_Item_Stock_Json_Hydrates_With_Reseeded_Defaults_Instead_Of_500()
+    {
+        var id = NewMachineId();
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Machines.Add(new MachineEntity
+            {
+                Id = id,
+                State = "Idle",
+                BalanceCents = 0,
+                CoinStockJson = "{\"200\":20}",
+                ItemStockJson = "[1,2,3]",
+                UpdatedAt = DateTimeOffset.UtcNow,
+            });
+            db.SaveChanges();
+        }
+
+        var state = await GetStateAsync(id);
+        Assert.Equal(20, state.Inventory.Coins[200]);
+        Assert.Equal(20, state.Inventory.Coins[5]); // reseeded: the row only carried $2 coins
+        Assert.Equal(10, state.Inventory.Items["cappuccino"]);
+        Assert.Equal(10, state.Inventory.Items["latte"]); // reseeded: the row carried no latte
     }
 
     // ------------------------------------------------------------ admin refill

@@ -2,7 +2,6 @@
 @namespace CoffeeMachine.Client.Components
 @implements IAsyncDisposable
 @inject IJSRuntime Js
-@inject NavigationManager Nav
 @inject CoffeeMachine.Client.Services.MachineApiClient Api
 @inject CoffeeMachine.Client.Services.SoundService Sounds
 @inject CoffeeMachine.Client.Services.MotionPreferences Motion
@@ -29,10 +28,6 @@
         </div>
         <div class="header-badges">
             <span class="badge badge-aud" title="Australian denominations">AUD</span>
-            @if (_demo)
-            {
-                <span class="badge badge-demo" title="Running against the in-process fake backend">DEMO</span>
-            }
             <button type="button" class="mute-btn"
                     aria-label="@(Sounds.Muted ? "Unmute machine sounds" : "Mute machine sounds")"
                     aria-pressed="@Sounds.Muted"
@@ -79,7 +74,7 @@
             <div class="cabinet-halo" aria-hidden="true"></div>
 
             <div class="cabinet-display">
-                <Display BalanceDisplay="@Money(_balance)" StatusText="@_statusText"
+                <Display BalanceDisplay="@MoneyFormat.Format(_balance)" StatusText="@_statusText"
                           StatusKey="@_statusKey" Tone="@_statusTone" Blink="@_statusBlink" />
             </div>
 
@@ -152,7 +147,6 @@
     private bool _loading = true;
     private string? _loadError;
     private bool _reducedMotion;
-    private bool _demo;
 
     private bool _brewing;
     private bool _operating;
@@ -163,8 +157,6 @@
     private string _statusTone = "info";
     private bool _statusBlink;
     private CancellationTokenSource? _statusCts;
-
-    private readonly List<int> _insertedHistory = [];
 
     private CoinSlot _coinSlot = default!;
     private CupArea _cupArea = default!;
@@ -179,7 +171,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _demo = HasDemoFlag(Nav.Uri);
         await Sounds.InitialiseAsync();
         _reducedMotion = await Motion.ReducedAsync;
         await LoadInitialAsync();
@@ -314,7 +305,7 @@
         }
         else
         {
-            _statusText = _balance > 0 && _menu.Any(m => m.InStock && _balance >= m.PriceCents)
+            _statusText = _balance > 0 && MenuUi.CanAffordAny(_menu, _balance)
                 ? "SELECT DRINK"
                 : "INSERT COIN";
             _statusTone = "info";
@@ -342,9 +333,8 @@
             if (result.Accepted)
             {
                 _balance = result.BalanceCents;
-                _insertedHistory.Add(denominationCents);
                 await Sounds.PlayAsync("coinInsert");
-                SetStatus(_menu.Any(m => m.InStock && _balance >= m.PriceCents) ? "SELECT DRINK" : "INSERT COIN");
+                SetStatus(MenuUi.CanAffordAny(_menu, _balance) ? "SELECT DRINK" : "INSERT COIN");
             }
             else
             {
@@ -407,7 +397,6 @@
             await Sounds.PlayAsync("buttonPress");
             var purchase = await Api.SelectItemAsync(itemId);
 
-            _insertedHistory.Clear();
             _balance = 0;
             _brewing = true;
             SetStatus("BREWING", sticky: true);
@@ -454,23 +443,8 @@
 
             case "exact-change-only":
                 await Sounds.PlayAsync("coinCascade", 4);
-                if (ex.Refund is not null)
-                {
-                    // The backend already refunded the coins (demo backend):
-                    // cascade them into the coin-return tray.
-                    var refund = ex.Refund.SelectMany(c => Enumerable.Repeat(c.DenominationCents, c.Count)).ToArray();
-                    _insertedHistory.Clear();
-                    _balance = 0;
-                    if (refund.Length > 0)
-                    {
-                        await _coinReturn.AddManyAsync(refund, _reducedMotion);
-                    }
-                }
-
-                // The real API holds the credit in the machine until the
-                // customer presses CANCEL; the silent refresh restores the
-                // true balance either way, so never pretend a refund that
-                // did not happen.
+                // The API holds the credit in the machine until the customer
+                // presses CANCEL; the silent refresh restores the true balance.
                 SetStatus("EXACT CHANGE ONLY", "warn", blink: true, ms: 3200);
                 await RefreshStateSilentlyAsync();
                 break;
@@ -502,7 +476,6 @@
             await Sounds.PlayAsync("buttonPress");
             var result = await Api.CancelAsync();
             _balance = 0;
-            _insertedHistory.Clear();
 
             if (result.Refund.Count > 0)
             {
@@ -591,22 +564,4 @@
         "decaf" => "liquid-decaf",
         _ => "liquid-latte",
     };
-
-    private static string Money(int cents) => $"${cents / 100d:0.00}";
-
-    private static bool HasDemoFlag(string uri)
-    {
-        var query = new Uri(uri, UriKind.RelativeOrAbsolute).Query;
-        foreach (var pair in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var separator = pair.IndexOf('=');
-            var key = separator < 0 ? pair : pair[..separator];
-            if (string.Equals(key, "demo", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }

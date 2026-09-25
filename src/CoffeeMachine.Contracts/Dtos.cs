@@ -22,7 +22,7 @@ public sealed record InventoryDto(IReadOnlyDictionary<int, int> Coins, IReadOnly
 
 /// <summary>Full observable state of a machine, as rendered by the client.</summary>
 /// <param name="MachineId">Stable machine identifier (per-visitor GUID).</param>
-/// <param name="State">Machine state name: Idle, AwaitingSelection, Brewing or Dispensing.</param>
+/// <param name="State">Machine state name: Idle, AwaitingSelection or Dispensing.</param>
 /// <param name="BalanceCents">Current credit in cents.</param>
 /// <param name="BalanceDisplay">Pre-formatted credit, e.g. "$2.50".</param>
 /// <param name="Menu">The menu with per-item stock flags.</param>

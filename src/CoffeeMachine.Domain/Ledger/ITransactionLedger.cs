@@ -15,11 +15,10 @@ public interface ITransactionLedger
     void Append(Transaction transaction);
 
     /// <summary>
-    /// Lists a machine's transactions, most recent first.
+    /// Lists transactions, most recent first.
     /// </summary>
-    /// <param name="machineId">The machine whose transactions to list.</param>
+    /// <param name="machineId">The machine whose transactions to list, or null/blank for every machine.</param>
     /// <param name="limit">Maximum number of rows to return; rows beyond the limit are discarded.</param>
     /// <returns>The matching transactions, newest first.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="machineId"/> is null.</exception>
-    IEnumerable<Transaction> List(string machineId, int limit);
+    IEnumerable<Transaction> List(string? machineId, int limit);
 }

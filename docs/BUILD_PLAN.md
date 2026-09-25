@@ -57,7 +57,7 @@ virtual-coffee-machine/
 ### Domain model
 - `Denomination` enum: 1,2,5,10,20,50,100,200 cents. `CoinValidator` rejects 1¢/2¢/unknown.
 - `ChangeCalculator`: greedy over `[200,100,50,20,10,5]` — AUD denominations are canonical ⇒ greedy is provably minimal. All prices & accepted coins are multiples of 5 ⇒ exact change always exists given inventory.
-- `VendingMachine` state machine: `Idle → AwaitingSelection → Brewing → Dispensing → Idle`; `Cancel` refunds at any accept state. Server transitions synchronously; **client plays the 2–3s brew animation locally**.
+- `VendingMachine` state machine: `Idle → AwaitingSelection → Dispensing → Idle`; `Cancel` refunds at any accept state. Server transitions synchronously; **client plays the 2–3s brew animation locally** (no Brewing state on the wire).
 - `Inventory`: inserted coins feed stock; change drawn from stock. Insufficient stock for required change ⇒ **"Exact change only"**: refund inserted coins, refuse sale. Admin refill via service panel.
 - Per-visitor machine: GUID from localStorage; state + append-only ledger persisted to SQLite ⇒ refresh restores balance/mid-brew state.
 
@@ -92,7 +92,7 @@ public sealed record RefillRequest(int[] CoinDenominations, int[] CoinCounts, Di
 | `GET /transactions?machineId=&limit=` | paged ledger |
 | `POST /admin/refill` | service panel restock |
 
-States: `Idle`, `AwaitingSelection`, `Brewing`, `Dispensing`.
+States: `Idle`, `AwaitingSelection`, `Dispensing`.
 
 ### UI spec
 LED 7-segment credit display + status text (`INSERT COIN`, `1¢ REJECTED`, `EXACT CHANGE ONLY`, `ENJOY!`); coin buttons 5¢–$2 **plus visible 1¢/2¢ that get rejected** into the coin-return tray; three drink buttons glow when affordable; purchase = cup drops → pours → steam → change coins cascade one-by-one with clinks; coin-return tray clickable to "take" coins; ledger panel; discreet service panel. Sounds: WebAudio-generated (coin clink, pour, hum), mute toggle, unlock on first gesture. Keyboard: `5`–`2` coins, `1/2/3` select, `C` cancel. A11y: aria-live display, labels, `prefers-reduced-motion`. Responsive to mobile.

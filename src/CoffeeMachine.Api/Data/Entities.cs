@@ -37,7 +37,7 @@ public sealed class MachineEntity
     /// <summary>Primary key: the stable machine identifier.</summary>
     public string Id { get; set; } = string.Empty;
 
-    /// <summary>The machine state name: Idle, AwaitingSelection, Brewing or Dispensing.</summary>
+    /// <summary>The machine state name: Idle, AwaitingSelection or Dispensing.</summary>
     public string State { get; set; } = string.Empty;
 
     /// <summary>The current credit in cents.</summary>

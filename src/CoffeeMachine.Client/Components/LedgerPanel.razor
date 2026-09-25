@@ -24,6 +24,10 @@
             {
                 <p class="ledger-empty">Loading transactions…</p>
             }
+            else if (_failed)
+            {
+                <p class="ledger-empty" role="alert">Couldn't load transactions — the machine may be offline.</p>
+            }
             else if (Rows.Count == 0)
             {
                 <p class="ledger-empty">No purchases yet — the machine awaits its first customer.</p>
@@ -47,8 +51,8 @@
                                 <tr>
                                     <td>@row.Timestamp.ToLocalTime().ToString("HH:mm:ss")</td>
                                     <td>@ItemName(row)</td>
-                                    <td class="num">@Money(row.PaidCents)</td>
-                                    <td class="num">@Money(row.ChangeCents)</td>
+                                    <td class="num">@MoneyFormat.Format(row.PaidCents)</td>
+                                    <td class="num">@MoneyFormat.Format(row.ChangeCents)</td>
                                     <td>
                                         <span class="status-chip @(row.Status == "Purchased" ? "purchased" : "cancelled")">@row.Status</span>
                                     </td>
@@ -67,6 +71,7 @@
 
     private bool _open;
     private bool _loading;
+    private bool _failed;
     private IReadOnlyList<TransactionDto> Rows { get; set; } = [];
     private Dictionary<string, string> _itemNames = [];
     private bool _namesLoaded;
@@ -84,6 +89,7 @@
     public async Task RefreshAsync()
     {
         _loading = true;
+        _failed = false;
         try
         {
             if (!_namesLoaded)
@@ -96,6 +102,9 @@
         catch
         {
             // The ledger is auxiliary — never take the machine down for it.
+            // Keep the last good rows and flag the fetch as failed so the
+            // panel says so instead of pretending there are no transactions.
+            _failed = true;
         }
         finally
         {
@@ -129,6 +138,4 @@
 
     private string ItemName(TransactionDto row) =>
         row.Status == "Cancelled" ? "—" : _itemNames.GetValueOrDefault(row.ItemId, row.ItemId);
-
-    private static string Money(int cents) => $"${cents / 100d:0.00}";
 }
