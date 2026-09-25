@@ -5,7 +5,7 @@ insert Australian coins, watch the 1¢ and 2¢ get spat into the coin return, br
 one of three coffees, and take your change, broken into coinage.
 
 [![CI](https://github.com/XanderCaulfield/virtual-coffee-machine/actions/workflows/ci.yml/badge.svg)](https://github.com/XanderCaulfield/virtual-coffee-machine/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-988-green)](#testing)
+[![Tests](https://img.shields.io/badge/tests-1039-green)](#testing)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Live demo](https://img.shields.io/badge/live_demo-onrender.com-46e3b7)](https://virtual-coffee-machine.onrender.com)
 
@@ -107,9 +107,9 @@ virtual-coffee-machine/
 ├── src/
 │   ├── CoffeeMachine.Contracts/        # DTOs shared by Api + Client
 │   ├── CoffeeMachine.Domain/           # pure C#, zero dependencies
-│   │   ├── Money/                      #   denominations, validator, greedy change
+│   │   ├── Money/                      #   denominations, validator, greedy change, formatting
 │   │   ├── Machine/                    #   state machine, inventory
-│   │   ├── Menu/                       #   three drinks, price formatting
+│   │   ├── Menu/                       #   three drinks
 │   │   └── Ledger/                     #   transactions
 │   ├── CoffeeMachine.Api/              # REST API + hosts the WASM client
 │   │   ├── Controllers/                #   Menu, Machines, Transactions, Admin
@@ -198,17 +198,17 @@ curl -s "http://localhost:5198/api/v1/transactions?machineId=desk-1&limit=5"
 
 ## Testing
 
-**988 tests, all green** — 956 domain + 26 API integration + 6 client, all in the solution:
+**1039 tests, all green** — 960 domain + 68 API integration + 11 client, all in the solution:
 
 ```bash
-dotnet test        # all 988 tests (domain + API integration + client)
+dotnet test        # all 1039 tests (domain + API integration + client)
 ```
 
 | Layer | What's covered |
 |---|---|
-| **Domain** (956) | The complete coin-validator matrix (including rejected 1¢/2¢); an **exhaustive change proof** — every amount from 0–4000¢ in 5¢ steps is broken down, checked to sum correctly, never emit 1¢/2¢, and match a dynamic-programming optimum coin-for-coin; the full state machine; inventory & exact-change; cancel/refund; ledger ordering and limits |
-| **API** (26) | Integration tests via `WebApplicationFactory` + in-memory SQLite: every endpoint, every success shape, and every error path — 400s, all four 409 `errorCode` values, 404 for unknown routes, persistence across requests |
-| **Client** (6) | The `MachineApiClient` against a stub `HttpHandler` |
+| **Domain** (960) | The complete coin-validator matrix (including rejected 1¢/2¢); an **exhaustive change proof** — every amount from 0–4000¢ in 5¢ steps is broken down, checked to sum correctly, never emit 1¢/2¢, and match a dynamic-programming optimum coin-for-coin; the full state machine; inventory & exact-change; cancel/refund; ledger ordering and limits; the shared money formatter |
+| **API** (68) | Integration tests via `WebApplicationFactory` + in-memory SQLite — every endpoint, every success shape, and every error path (400s, all four 409 `errorCode` values, 404 for unknown routes, persistence across requests) — plus unit tests for the LED status matrix, RFC 7807 problem shapes, stock-JSON serialization (including corrupt-row reseeding) and the EF ledger |
+| **Client** (11) | `MachineApiClient` against a stub `HttpHandler`, error-body parsing, the per-tab machine id store, and the shared affordability checks |
 | **Browser pass** | Manual/CDP checks: mobile width, two tabs staying independent, refresh mid-brew restoring state, `prefers-reduced-motion`, keyboard shortcuts, a11y audit |
 
 ## Built with AI
@@ -227,10 +227,11 @@ specialised sub-agents, and reviewed every phase before merging it:
 | A4 QA | Adversarial pass — 32 browser checks; found & fixed 7 real bugs |
 | A5 DevOps | Render Blueprint, deploy hook, container verification |
 | A6 Docs | README, ADRs, demo GIF |
+| A7 Final review | Redundancy sweep, dead-code removal, coverage, doc accuracy |
 
 Each agent had exclusive file ownership and acceptance criteria, worked in an
-isolated git worktree, and landed its work as a conventional-commit branch that
-was reviewed before merging. Boilerplate was delegated; the consequential
+isolated branch, and landed its work as a conventional-commit series that was
+reviewed before merging. Boilerplate was delegated; the consequential
 decisions — greedy change and its proof, the exact-change stock model, per-tab
 machines, the REST contract — were made up front and are documented in the
 ADRs. The full orchestration plan every agent worked from is archived at
@@ -242,7 +243,7 @@ ADRs. The full orchestration plan every agent worked from is archived at
 | Agents | 1 orchestrator + 8 sub-agent sessions |
 | Model | DeepSeek V4 Pro (via OpenCode) |
 | Cost | $4.57 |
-| Output | 25 commits, 7 feature branches, ~8,900 lines, 988 tests, 0 warnings |
+| Output | 37 commits, 8 feature branches, ~9,100 lines, 1039 tests, 0 warnings |
 
 ## Decisions & deployment
 
