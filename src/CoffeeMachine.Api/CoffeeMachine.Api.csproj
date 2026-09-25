@@ -18,4 +18,8 @@
     <ProjectReference Include="..\CoffeeMachine.Client\CoffeeMachine.Client.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="CoffeeMachine.Api.Tests" />
+  </ItemGroup>
+
 </Project>

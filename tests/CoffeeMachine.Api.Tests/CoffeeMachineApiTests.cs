@@ -401,6 +401,64 @@ public sealed class CoffeeMachineApiTests : IClassFixture<CoffeeMachineApiFactor
         Assert.Equal(10, state.Inventory.Items["decaf"]);
     }
 
+    [Fact]
+    public async Task Machine_With_Corrupt_Stock_Json_Hydrates_With_Reseeded_Defaults_Instead_Of_500()
+    {
+        var id = NewMachineId();
+
+        // A hand-edited row whose coin stock column is not valid JSON. The
+        // balance column is a plain integer and stays trusted; the stock is
+        // reseeded to the factory defaults so the machine stays usable.
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Machines.Add(new MachineEntity
+            {
+                Id = id,
+                State = "AwaitingSelection",
+                BalanceCents = 150,
+                CoinStockJson = "{not valid json",
+                ItemStockJson = "{\"latte\":10}",
+                UpdatedAt = DateTimeOffset.UtcNow,
+            });
+            db.SaveChanges();
+        }
+
+        var state = await GetStateAsync(id);
+        Assert.Equal(150, state.BalanceCents);
+        Assert.Equal("AwaitingSelection", state.State);
+        Assert.Equal(20, state.Inventory.Coins[5]);
+        Assert.Equal(20, state.Inventory.Coins[200]);
+        Assert.Equal(10, state.Inventory.Items["latte"]);
+    }
+
+    [Fact]
+    public async Task Machine_With_Corrupt_Item_Stock_Json_Hydrates_With_Reseeded_Defaults_Instead_Of_500()
+    {
+        var id = NewMachineId();
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Machines.Add(new MachineEntity
+            {
+                Id = id,
+                State = "Idle",
+                BalanceCents = 0,
+                CoinStockJson = "{\"200\":20}",
+                ItemStockJson = "[1,2,3]",
+                UpdatedAt = DateTimeOffset.UtcNow,
+            });
+            db.SaveChanges();
+        }
+
+        var state = await GetStateAsync(id);
+        Assert.Equal(20, state.Inventory.Coins[200]);
+        Assert.Equal(20, state.Inventory.Coins[5]); // reseeded: the row only carried $2 coins
+        Assert.Equal(10, state.Inventory.Items["cappuccino"]);
+        Assert.Equal(10, state.Inventory.Items["latte"]); // reseeded: the row carried no latte
+    }
+
     // ------------------------------------------------------------ admin refill
 
     [Fact]
