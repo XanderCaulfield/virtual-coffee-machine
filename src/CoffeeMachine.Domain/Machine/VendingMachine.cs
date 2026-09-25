@@ -147,16 +147,15 @@ public sealed class VendingMachine
     /// to the coin stock (they become change for the next customer).</description></item>
     /// <item><description>Inserting the first coin moves the machine from
     /// <see cref="MachineState.Idle"/> to <see cref="MachineState.AwaitingSelection"/>.</description></item>
-    /// <item><description>While <see cref="MachineState.Dispensing"/> (or
-    /// <see cref="MachineState.Brewing"/>) the slot is ignored so credit can
-    /// never accumulate mid-dispense.</description></item>
+    /// <item><description>While <see cref="MachineState.Dispensing"/> the slot
+    /// is ignored so credit can never accumulate mid-dispense.</description></item>
     /// </list>
     /// </remarks>
     /// <param name="denomination">The coin inserted.</param>
     /// <returns>The outcome, including the updated balance.</returns>
     public CoinInsertResult InsertCoin(Denomination denomination)
     {
-        if (State is MachineState.Dispensing or MachineState.Brewing)
+        if (State == MachineState.Dispensing)
         {
             return CoinInsertResult.Rejected(BusyRejectionReason, BalanceCents);
         }
@@ -280,7 +279,7 @@ public sealed class VendingMachine
     /// <returns>The refund, broken into coins.</returns>
     public CancelResult Cancel()
     {
-        if (State is MachineState.Dispensing or MachineState.Brewing)
+        if (State == MachineState.Dispensing)
         {
             // Never touch the state mid-dispense; there is nothing to refund.
             return CancelResult.Nothing;
