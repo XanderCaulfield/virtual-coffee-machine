@@ -1,5 +1,7 @@
 namespace CoffeeMachine.Domain.Menu;
 
+using CoffeeMachine.Domain.Money;
+
 /// <summary>
 /// A product the machine sells.
 /// </summary>
@@ -11,5 +13,5 @@ public sealed record MenuItem(string Id, string Name, int PriceCents)
     /// <summary>
     /// The price formatted as a currency string, e.g. "$3.50".
     /// </summary>
-    public string PriceDisplay => CoffeeMenu.FormatPrice(PriceCents);
+    public string PriceDisplay => MoneyFormat.Format(PriceCents);
 }

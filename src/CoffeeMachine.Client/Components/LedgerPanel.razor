@@ -47,8 +47,8 @@
                                 <tr>
                                     <td>@row.Timestamp.ToLocalTime().ToString("HH:mm:ss")</td>
                                     <td>@ItemName(row)</td>
-                                    <td class="num">@Money(row.PaidCents)</td>
-                                    <td class="num">@Money(row.ChangeCents)</td>
+                                    <td class="num">@MoneyFormat.Format(row.PaidCents)</td>
+                                    <td class="num">@MoneyFormat.Format(row.ChangeCents)</td>
                                     <td>
                                         <span class="status-chip @(row.Status == "Purchased" ? "purchased" : "cancelled")">@row.Status</span>
                                     </td>
@@ -129,6 +129,4 @@
 
     private string ItemName(TransactionDto row) =>
         row.Status == "Cancelled" ? "—" : _itemNames.GetValueOrDefault(row.ItemId, row.ItemId);
-
-    private static string Money(int cents) => $"${cents / 100d:0.00}";
 }

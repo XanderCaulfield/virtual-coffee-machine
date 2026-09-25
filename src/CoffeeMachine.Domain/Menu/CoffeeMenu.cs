@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace CoffeeMachine.Domain.Menu;
 
 /// <summary>
@@ -39,20 +37,5 @@ public static class CoffeeMenu
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// Formats a cent amount as a dollar string, e.g. 350 → "$3.50".
-    /// Uses invariant culture so output is stable regardless of server locale.
-    /// </summary>
-    /// <param name="cents">The amount in cents. May be negative.</param>
-    /// <returns>The formatted price, e.g. "$3.50" or "-$0.50".</returns>
-    public static string FormatPrice(int cents)
-    {
-        var sign = cents < 0 ? "-" : string.Empty;
-        var absolute = Math.Abs(cents);
-        var dollars = absolute / 100;
-        var remainder = absolute % 100;
-        return string.Create(CultureInfo.InvariantCulture, $"{sign}${dollars}.{remainder:D2}");
     }
 }

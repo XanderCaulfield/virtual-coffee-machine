@@ -51,7 +51,7 @@
     [Parameter]
     public EventCallback OnTake { get; set; }
 
-    private string FormatTotal => $"${_totalCents / 100d:0.00}";
+    private string FormatTotal => MoneyFormat.Format(_totalCents);
 
     /// <summary>Cascades change coins into the tray one by one.</summary>
     public async Task SpillAsync(IReadOnlyList<ChangeCoinDto> change, bool reducedMotion)

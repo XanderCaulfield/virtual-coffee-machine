@@ -79,7 +79,7 @@
             <div class="cabinet-halo" aria-hidden="true"></div>
 
             <div class="cabinet-display">
-                <Display BalanceDisplay="@Money(_balance)" StatusText="@_statusText"
+                <Display BalanceDisplay="@MoneyFormat.Format(_balance)" StatusText="@_statusText"
                           StatusKey="@_statusKey" Tone="@_statusTone" Blink="@_statusBlink" />
             </div>
 
@@ -591,8 +591,6 @@
         "decaf" => "liquid-decaf",
         _ => "liquid-latte",
     };
-
-    private static string Money(int cents) => $"${cents / 100d:0.00}";
 
     private static bool HasDemoFlag(string uri)
     {

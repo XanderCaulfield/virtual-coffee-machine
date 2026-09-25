@@ -35,9 +35,7 @@
     [Parameter]
     public int Size { get; set; } = 48;
 
-    private string Label => DenominationCents >= 100
-        ? $"${DenominationCents / 100}"
-        : $"{DenominationCents}¢";
+    private string Label => Denominations.FromCents(DenominationCents).DisplayName();
 
     private string MetalClass => DenominationCents switch
     {

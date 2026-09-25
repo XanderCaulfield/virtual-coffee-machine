@@ -49,7 +49,7 @@ public sealed class MachinesController : ControllerBase
             snapshot.Id,
             snapshot.State.ToString(),
             snapshot.BalanceCents,
-            CoffeeMenu.FormatPrice(snapshot.BalanceCents),
+            MoneyFormat.Format(snapshot.BalanceCents),
             menu,
             inventory,
             MachineStatus.For(snapshot)));
@@ -81,7 +81,7 @@ public sealed class MachinesController : ControllerBase
             result.Accepted,
             result.RejectionReason,
             result.BalanceCents,
-            CoffeeMenu.FormatPrice(result.BalanceCents)));
+            MoneyFormat.Format(result.BalanceCents)));
     }
 
     /// <summary>
